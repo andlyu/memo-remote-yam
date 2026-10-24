@@ -5,8 +5,10 @@ Remote YAM remains a clean, pinned external dependency. Preserve the authors'
 robot client unchanged with its upstream attribution.
 
 Keep the runtime coding agent's observation/program/execution/revision loop.
-Do not replace it with a fixed script or pre-generated task lookup. Demo mode
-must remain explicitly labelled scripted, synthetic and offline.
+Do not replace it with a fixed script or pre-generated task lookup. Demo robot execution
+must remain explicitly labelled scripted/mock. Camera display uses the real
+public observer, overhead, left and right feeds by default, independently of
+robot execution. Synthetic cameras require the explicit test-only flag.
 
 Use the existing RunnerController queue, lease, feedback, execution checks and
 Stop semantics. Never automatically retry a timed-out motion. Offline passing

@@ -20,8 +20,12 @@ also require Codex CLI (tested with 0.157.0) and your normal Codex login.
 ./run.sh --demo
 ```
 
-Open <http://127.0.0.1:8797>. **Demo mode uses a scripted agent and synthetic
-cameras with an offline mock station. It never calls a model or the robot.**
+Open <http://127.0.0.1:8797>. **Demo mode uses a scripted mock robot and the real public camera streams.
+It never calls a model or controls the physical robot.**
+
+The viewer preserves main observer, overhead, left wrist and right wrist.
+For fully offline camera fixtures, use `./run.sh --demo --synthetic-cameras`.
+See [camera sources and mapping](docs/CAMERAS.md).
 
 Test the real model with the mock robot:
 

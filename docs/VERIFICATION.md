@@ -6,7 +6,7 @@ AgP client 54dd96ed97c013950816bb674cbc38a68ec19b51.
 
 | Check | Result | Evidence / limit |
 | --- | --- | --- |
-| Offline tests | PASS | `python -m pytest -q`: 31 passed in 6.60 s (final permanent checkout). Includes original-client round trip, completion matching, FK/IK, RGB-D files/calibration and idle-feedback timestamp boundaries, Stop/lease revocation and process reaping, workspace symlink/FIFO protection, CSRF, visitor ownership and experience reuse. |
+| Offline tests | PASS | `python -m pytest -q`: 38 passed in 7.42 s (camera-parity update). Includes original-client round trip, completion matching, FK/IK, RGB-D files/calibration and idle-feedback timestamp boundaries, Stop/lease revocation and process reaping, workspace symlink/FIFO protection, CSRF, visitor ownership and experience reuse. |
 | Real coding agent with offline station | PASS | `python scripts/smoke_model.py`: run 2c322e338323456ca974d56f6ab36f02, 59.65 s creation-to-completion. Codex generated/executed scratch/smoke.py, issued state → frames → move_joints → state → frames, inspected a fresh image and saved notes. Output explicitly says no physical task was validated. |
 | Browser task/run/artifact flow | PASS | Localhost demo visibly completed, showed tool calls/results and opened saved experience notes. Preview images and outcome explicitly identify the mock. Screenshots are in ignored outputs/website-overview.png and outputs/website-outcome.png. |
 | Fresh workspace / selected experience | PASS | A second offline run copied the selected snapshot into knowledge/; an unseeded run remained fresh. Snapshots are agent-authored/unverified. |
@@ -18,3 +18,24 @@ Receipts remain under ignored `outputs/model-smoke/` and
 `outputs/browser-demo/`. Raw agent process events are host-private and never
 served by the run workspace API. Model result declarations are recorded with
 `agent_declared_not_independent_physical_validation`.
+
+## Public camera parity — 2026-10-24
+
+PASS: the running localhost preview now displays the actual public API sources:
+main observer, overhead, left wrist and right wrist. Generated images are used
+only with the explicit `--synthetic-cameras` test option. The main public video
+feed's existing camera order and crop geometry are preserved. The public relay
+redirects retired stream paths; the local proxy follows them exactly as the
+upstream LocalPlayground does, without forwarding visitor credentials.
+
+Browser evidence: all four canvases reported `frameSource=video` and matching
+presented frame counters advancing 59 → 211; video time advanced
+15.909149 → 35.410759 s with readyState 4 and paused=false. The received feed
+was 1280×720, with four 640×360 tiles. This verifies advancing playback, not a
+hard source-freshness or end-to-end latency guarantee. API stills are used only
+while the video joins. No robot session or physical command was created.
+
+Receipts: `outputs/api-camera-playback.json`, `outputs/api-cameras.png`.
+The earlier synthetic preview screenshot documents initial offline testing;
+it is superseded by this live-camera preview. Robot execution remains mocked
+on the current `--demo` server, independently of the camera viewer.

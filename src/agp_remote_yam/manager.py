@@ -19,6 +19,7 @@ class Settings:
     agent_mode: str = "codex"
     demo: bool = False
     mock_robot: bool = False
+    camera_source: str = "api"
     codex: str = "codex"
 
     @property

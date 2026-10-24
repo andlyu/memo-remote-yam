@@ -15,12 +15,14 @@ from PIL import Image
 from .dependency import REMOTE_YAM_COMMIT, UPSTREAM_AGP_COMMIT
 from .manager import RunManager
 from .workspace import Workspace
+from .video import CAMERA_ROLES, stream_config, fetch_media
 
 
 class App:
     def __init__(self, settings, *, public_origin=None):
         self.manager = RunManager(settings)
         self.settings = settings
+        self.video_stream = stream_config(settings.robot_id) if settings.camera_source == "api" else None
         self.public_origin = public_origin.rstrip("/") if public_origin else None
         secret_file = Path(settings.data).resolve() / "web-secret"
         if not secret_file.exists():
@@ -100,24 +102,31 @@ class App:
             (b"content-type", content_type.encode()), (b"content-length", str(len(result)).encode()),
             (b"set-cookie", cookie.encode()), (b"cache-control", b"no-store"),
             (b"x-content-type-options", b"nosniff"), (b"referrer-policy", b"same-origin"),
-            (b"content-security-policy", b"default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; frame-ancestors 'none'")]))
+            (b"content-security-policy", b"default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'")]))
         await send(dict(type="http.response.body", body=result))
 
     def route(self, method, path, query, body, owner, csrf):
-        if method == "GET" and path in ("/", "/static/app.js", "/static/style.css"):
+        if method == "GET" and path in ("/", "/static/app.js", "/static/style.css", "/static/cameras.js"):
             name = "index.html" if path == "/" else path.rsplit("/", 1)[-1]
-            mime = {"index.html": "text/html; charset=utf-8", "app.js": "text/javascript", "style.css": "text/css"}[name]
+            mime = {"index.html": "text/html; charset=utf-8", "app.js": "text/javascript", "cameras.js": "text/javascript", "style.css": "text/css"}[name]
             return 200, mime, files("agp_remote_yam").joinpath("static", name).read_bytes()
+        if method == "GET" and path in ("/static/hls.light.min.js", "/static/HLS-LICENSE"):
+            from .dependency import runner_root
+            asset = runner_root() / "static" / path.rsplit("/", 1)[-1]
+            return 200, "text/javascript" if path.endswith(".js") else "text/plain", asset.read_bytes()
+        if method == "GET" and self.video_stream and path.startswith("/" + self.video_stream["path"] + "/"):
+            return fetch_media(self.video_stream, path, query)
         if method == "GET" and path == "/api/config":
             return 200, "application/json", dict(csrf=csrf, robot_id=self.settings.robot_id,
                 model=self.settings.model, mode="offline_mock" if self.settings.offline else "physical_api",
                 agent="scripted" if self.settings.demo else self.settings.agent_mode, remote_yam_revision=REMOTE_YAM_COMMIT,
+                camera_source=self.settings.camera_source, camera_roles=list(CAMERA_ROLES), video_stream=self.video_stream,
                 agp_reference_revision=UPSTREAM_AGP_COMMIT)
         if method == "GET" and path.startswith("/api/cameras/"):
             role = path.rsplit("/", 1)[-1].removesuffix(".jpg")
-            if role not in ("top", "left", "right"):
+            if role not in CAMERA_ROLES:
                 raise FileNotFoundError()
-            if self.settings.offline:
+            if self.settings.camera_source == "synthetic":
                 from .mock import preview
                 data = preview(role)
             else:

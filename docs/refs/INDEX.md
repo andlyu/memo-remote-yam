@@ -9,3 +9,5 @@
 
 Camera and joint timestamps are not hardware synchronized. Our interface exposes that limitation instead of claiming simultaneous captures. Motion timeouts are terminal; no automatic replay. A successful mock test is software evidence, never physical task success.
 
+
+Camera viewer: see `docs/CAMERAS.md`, `hls.js/API-1.7.2.md`, and the pinned public viewer source. Preserve observer/top/left/right roles, the published atlas mapping and canonical redirect behavior.
