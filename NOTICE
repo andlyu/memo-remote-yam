@@ -1,0 +1,9 @@
+This project adapts the command interface of Agent as Policy for Robotic Manipulation.
+The upstream robot_client.py is distributed unmodified in src/agp_remote_yam/assets/.
+Upstream: https://github.com/agent-as-policy-2026/agent-as-policy
+Revision: 54dd96ed97c013950816bb674cbc38a68ec19b51
+License: Apache-2.0, retained in licenses/AGP-APACHE-2.0.txt.
+
+Remote YAM is an external pinned dependency, not vendored project source.
+Its original license and notices remain in its separately installed checkout.
+This adaptation does not claim to reproduce the paper's success rates or timed throwing.

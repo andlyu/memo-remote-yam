@@ -1,0 +1,5 @@
+{
+  "remote_yam": {"repository": "https://github.com/andlyu/blupe-remote-yam.git", "commit": "fb1aaa9a696ae4597d06aef41bf876bf2ec90e4d"},
+  "agent_as_policy_reference": {"repository": "https://github.com/agent-as-policy-2026/agent-as-policy", "commit": "54dd96ed97c013950816bb674cbc38a68ec19b51"},
+  "codex_cli_tested": "0.157.0"
+}
