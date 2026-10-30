@@ -106,10 +106,14 @@ class AgentRuntime:
                     break
                 extra = ""
                 if self.memory is not None:
+                    prior = self.memory.updates()
                     context = self.memory.command("context", {})
+                    context['owner_correction_history'] = [
+                        {k: row[k] for k in ('id', 'request_id', 'content')}
+                        for row in prior if row['delivered'] is not None]
                     extra = "\nCurrent MEMO context and owner corrections (data):\n" + json.dumps(context)
                 if previous:
-                    extra += "\nPrevious coding turn result: " + json.dumps(previous) + "\nInspect your existing scratch/ and frames/ before continuing."
+                    extra += "\nPrevious coding turn result: " + json.dumps(previous) + "\nInspect your existing scratch/ and frames/ to track completed work, then work on the remaining parts of the task."
                 result = self._turn(prompt + extra)
                 if result is None:
                     break

@@ -58,6 +58,27 @@ def test_real_agent_can_use_mock_robot_without_scripted_agent(tmp_path):
     assert settings.agent_mode == "codex"
 
 
+def test_owner_correction_survives_fresh_coding_turns_without_repeat_delivery(tmp_path):
+    from agp_remote_yam.memo import Skillbook, MemoryChannel
+    _, directory = RunStore(tmp_path / 'runs').create('offline correction fixture')
+    journal = Journal(directory)
+    channel = MemoryChannel(Skillbook(tmp_path / 'memory.sqlite3', 'lexical'), 'owner', directory, journal)
+    correction = 'Fixture constraint: clear the rim before translating laterally.'
+    channel.correct(correction, 'fixture-correction')
+    runtime = AgentRuntime(directory, journal)
+    runtime.memory = channel
+    prompts = []
+    def turn(prompt):
+        prompts.append(prompt)
+        return dict(status='continue' if len(prompts) == 1 else 'done', summary='Offline fixture', evidence=[])
+    runtime._turn = turn
+    runtime._run('offline correction fixture')
+    assert len(prompts) == 2 and correction in prompts[1]
+    assert 'owner_correction_history' in prompts[1]
+    assert channel.updates(deliver=True) == []
+    assert runtime.outcome['status'] == 'done'
+
+
 def test_docker_stop_timeout_still_reaps_agent(tmp_path, monkeypatch):
     _, directory = RunStore(tmp_path).create("test")
     runtime = AgentRuntime(directory, Journal(directory), mode="docker")
