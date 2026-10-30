@@ -31,7 +31,9 @@ class RunRecording:
             stream = stream_config(self.manifest["robot_id"])
             if not binary or not stream:
                 raise RuntimeError("Physical recording needs ffmpeg and a configured public camera stream")
-            source = PUBLIC_VIEWER + "/" + stream["path"] + "/video1_stream.m3u8"
+            # Start with the public master playlist. It supplies the media
+            # session query used by child playlists; a bare child URL is 401.
+            source = PUBLIC_VIEWER + "/" + stream["path"] + "/index.m3u8"
             self.log = (self.root / "ffmpeg.log").open("wb")
             self.process = subprocess.Popen([binary, "-hide_banner", "-loglevel", "warning", "-y",
                 "-rw_timeout", "15000000", "-headers", "Origin: " + PUBLIC_VIEWER + "\r\n",
