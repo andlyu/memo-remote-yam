@@ -90,6 +90,8 @@ class PacketBridge:
 
 class Worker:
     def __init__(self, settings, *, max_runs=4):
+        from .dependency import runner_root
+        runner_root()
         self.settings, self.max_runs = settings, max_runs
         self.store = RunStore(Path(settings.data) / "runs")
         self.book = Skillbook(Path(settings.data) / "skillbook.sqlite3", settings.memory_encoder)

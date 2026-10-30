@@ -91,3 +91,11 @@ def test_worker_only_returns_packets_never_opens_a_robot_session(tmp_path, monke
         assert station.trajectory_log == []  # no controller/physical command inside worker
     finally:
         worker.close()
+
+
+def test_fresh_worker_process_loads_pinned_remote_yam(tmp_path):
+    import os, subprocess, sys
+    from pathlib import Path
+    env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / 'src'))
+    code = "from pathlib import Path; from agp_remote_yam.service import Worker; from agp_remote_yam.manager import Settings; w=Worker(Settings(data=Path(__import__('sys').argv[1]), demo=True)); import remote_yam.api_depth; w.close()"
+    subprocess.run([sys.executable, '-c', code, str(tmp_path)], env=env, check=True, timeout=30)
