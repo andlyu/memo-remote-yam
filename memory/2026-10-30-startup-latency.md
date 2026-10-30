@@ -33,3 +33,10 @@
 - **Status:** DONE_WITH_CONCERNS for the verified startup-bottleneck repair;
   the overall integration is incomplete and the15-second acceptance target is
   not met. This report does not declare physical task success.
+
+Post-deployment verification: application31b604f hashes match and public API
+is healthy. Camera snapshots return upstream503 and the source public video
+playlist returns404, matching the standalone proxy response. Physical end-to-end
+verification is blocked by missing live footage. The site is not accepted as
+usable under the shared harness. No Playground changes or physical commands
+were made to address that external outage.

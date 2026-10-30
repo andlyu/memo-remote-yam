@@ -10,7 +10,7 @@ integration as complete.
 
 ## Completion requirements
 
-- [x] A usable website exists, with an associated repository containing the
+- [ ] A usable website exists, with an associated repository containing the
   website's source code. Record both links and the deployed source revision.
 - [x] The website and its source repository are public, unless an explicit
   public-visibility exception for either is recorded below.
@@ -167,7 +167,8 @@ required before the mandatory timing criterion can be checked.
 - On 2026-10-30, the deployed site opened successfully in the browser and showed
   Agent as Policy, the MEMO learning choice, current run events and live camera
   panels. GitHub repository metadata independently returned `private:false` and
-  `visibility:public`. These support the three checked criteria above.
+  `visibility:public`. Public visibility and the displayed approach name support the two checked
+  criteria above. The later live camera failure below leaves usability unchecked.
 - All three real-inference benchmark receipts explicitly name
   `Agent as Policy + MEMO`, runner `Automated`, run ID and `physical:false`.
   The benchmark uses the same Codex 0.159.0 native environment, rootless executor
@@ -197,3 +198,21 @@ immediate and historical physical replay; measured visitor-entry and every-click
 15-second physical motion; final deployed UI physical run and complete evidence
 review. Existing logs do not retain browser click timing or continuous visual
 motion footage, so those observations must not be fabricated retrospectively.
+
+
+### Post-deployment live check — 2026-10-30, 3:50 p.m. PDT
+
+- Application revision `31b604f` is installed on the standalone site. SHA-256
+  checks match its runtime, memory, native broker and MEMO protocol files.
+  HTTPS `/api/config` returns200 with `agent:remote`, `mode:physical_api`,
+  `model:gpt-6-astra`, `robot_id:yam-1`. Both own services are active.
+- The normal browser UI loads, but all camera tiles are blank. The independent
+  snapshot route returns503: `top camera frame unavailable (HTTP503)`.
+  Both the standalone and upstream Playground synchronized-HD playlist return
+  the same404 `no stream is available on path 'synchronized-hd'` response.
+  This is an upstream feed availability blocker; the startup repair does not
+  modify camera code or Playground. Do not send a physical task without fresh
+  visible footage. Keep site usability, live footage and final physical checks
+  unchecked. No continuous motion footage is available for a final timing pass.
+- No physical trial was attempted during this repair. No research-grounded
+  exception is claimed for either the latency miss or camera unavailability.
