@@ -97,7 +97,7 @@ def execute(sock, value, *, binary, home, timeout=610):
                 process.stdin.write((json.dumps(dict(id=identity, method=method, params=params))+'\n').encode())
                 process.stdin.flush()
             environment = 'agp-' + uuid.uuid4().hex
-            pending = b'';final = None;deadline = time.monotonic()+timeout
+            pending = b'';final = None;deadline = time.monotonic()+timeout;ready_deadline = 0
             request(1, 'initialize', dict(clientInfo=dict(name='agp_remote_yam', version='0.2.0'),
                                          capabilities=dict(experimentalApi=True)))
             try:
@@ -119,6 +119,12 @@ def execute(sock, value, *, binary, home, timeout=610):
                             lines = pending.split(b'\n');pending = lines.pop()
                             for line in lines:
                                 message = json.loads(line)
+                                if 'error' in message and message.get('id') == 5 and time.monotonic() < ready_deadline:
+                                    # Retry only authenticated executor initialization,
+                                    # before any model turn or robot command exists.
+                                    time.sleep(.1)
+                                    request(5, 'environment/info', dict(environmentId=environment))
+                                    continue
                                 if 'error' in message:
                                     raise RuntimeError('Codex remote environment request failed')
                                 identity = message.get('id')
@@ -132,6 +138,11 @@ def execute(sock, value, *, binary, home, timeout=610):
                                     request(2, 'environment/add', dict(environmentId=environment,
                                         execServerUrl=value['executor_url'], authBearerToken=value['executor_token'], connectTimeoutMs=15000))
                                 elif identity == 2:
+                                    ready_deadline = time.monotonic()+15
+                                    request(5, 'environment/info', dict(environmentId=environment))
+                                elif identity == 5:
+                                    if message.get('result', {}).get('cwd') != 'file:///work':
+                                        raise RuntimeError('Executor did not confirm the isolated workspace')
                                     request(3, 'thread/start', dict(model='gpt-6-astra', approvalPolicy='never',
                                         sandbox='danger-full-access', ephemeral=True,
                                         environments=[dict(environmentId=environment, cwd='/work')],

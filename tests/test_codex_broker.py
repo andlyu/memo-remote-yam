@@ -28,10 +28,17 @@ assert 'features.shell_tool=true' in sys.argv
 assert 'features.unified_exec=true' in sys.argv
 assert 'mcp_servers={}' in sys.argv
 def emit(value):print(json.dumps(value),flush=True)
+warming=0
 for line in sys.stdin:
  v=json.loads(line)
  if 'id' not in v:continue
  i=v['id'];p=v.get('params',{})
+ if i==5:
+  assert v['method']=='environment/info'
+  warming+=1
+  if warming==1:
+   emit(dict(id=i,error=dict(code=-32603,message='executor starting')));continue
+  emit(dict(id=i,result=dict(cwd='file:///work',shell=dict(name='sh',path='/bin/sh'))));continue
  if i==2:
   assert v['method']=='environment/add' and p['execServerUrl']=='ws://127.0.0.1:32123'
   assert p['authBearerToken']=='a'*43
@@ -40,6 +47,7 @@ for line in sys.stdin:
   assert p['model']=='gpt-6-astra'
  emit(dict(id=i,result={'thread':{'id':'fixture'}} if i==3 else {}))
  if i==4:
+  assert warming==2
   assert p['outputSchema']['properties']['status']['enum']==['continue','done','give_up']
   result=dict(status='done',summary='Offline fixture complete',evidence=[])
   emit(dict(method='item/completed',params=dict(item=dict(type='agentMessage',text=json.dumps(result)))))
