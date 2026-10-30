@@ -1,4 +1,3 @@
-from contextlib import nullcontext
 from pathlib import Path
 import socket
 import struct
@@ -31,7 +30,8 @@ def test_executor_mounts_only_this_workspace_and_ephemeral_capability(tmp_path,m
         commands.append(args)
         return '127.0.0.1:32123' if args[0]=='port' else 'container'
     monkeypatch.setattr(executor,'call',call)
-    monkeypatch.setattr(socket,'create_connection',lambda *a,**kw:nullcontext())
+    def unwanted_probe(*args,**kwargs):raise AssertionError('Only the native harness may initialize the executor')
+    monkeypatch.setattr(socket,'create_connection',unwanted_probe)
     url,token=executor.start()
     assert url=='ws://127.0.0.1:32123' and len(token)>40
     run=commands[0]

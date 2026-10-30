@@ -14,7 +14,6 @@ import socket
 import struct
 import subprocess
 import sys
-import time
 
 MAX_FRAME = 8_000_000
 
@@ -81,15 +80,9 @@ class Executor:
         address = self.call('port', self.name, '4500/tcp')
         if not re.fullmatch(r'127\.0\.0\.1:\d{1,5}', address):
             raise RuntimeError('Executor must expose only a loopback listener')
-        deadline = time.monotonic() + 15
-        while True:
-            try:
-                with socket.create_connection(('127.0.0.1', int(address.split(':')[1])), timeout=.3):
-                    break
-            except OSError:
-                if time.monotonic() >= deadline:
-                    raise TimeoutError('Container executor did not become ready')
-                time.sleep(.1)
+        # The native exec-server owns its authenticated connection lifecycle.
+        # A throwaway TCP probe can consume it before the harness connects.
+        # environment/add performs the real authenticated initialization.
         return 'ws://' + address, token
 
     def close(self):
