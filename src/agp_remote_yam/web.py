@@ -176,7 +176,9 @@ class App:
                     quote(robot_id, safe="") + "/cameras/" + role + ".jpg").jpeg
             return 200, "image/jpeg", data
         if path == "/api/runs" and method == "GET":
-            rows = [{k: v for k, v in row.items() if k != "owner"}
+            with self.manager.lock:
+                active = set(self.manager.active)
+            rows = [dict({k: v for k, v in row.items() if k != "owner"}, active=row["id"] in active)
                     for row in self.manager.store.list() if row.get("owner") == owner and
                     (self.settings.memo_site or row.get("approach") == APPROACH and not row.get("memo_enabled"))]
             return 200, "application/json", dict(runs=rows)

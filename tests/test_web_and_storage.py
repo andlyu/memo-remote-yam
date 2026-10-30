@@ -126,12 +126,14 @@ def test_browser_stop_revokes_mock_session_and_reaps_agent(tmp_path, monkeypatch
     controller = context["controller"]
     session_id = controller.status()["session_id"]
     assert session_id and context["runtime"].process is not None
+    assert request(app, "/api/runs", cookie=cookie)[2]["runs"][0]["active"] is True
     assert request(app, "/api/runs/"+identity+"/stop", "POST", {}, cookie=cookie, csrf=config["csrf"])[0] == 200
     run = wait_run(app, identity, cookie)
     assert run["status"] == "stopped"
     assert controller._session_api.get_session(session_id)["status"] == "stopped"
     assert context["runtime"].process.poll() is not None
     assert controller._session_api.trajectory_log == []
+    assert request(app, "/api/runs", cookie=cookie)[2]["runs"][0]["active"] is False
 
 
 def test_workspace_rejects_fifo_without_blocking(tmp_path):

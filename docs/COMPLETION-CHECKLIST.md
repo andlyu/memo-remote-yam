@@ -138,7 +138,7 @@ MEMO remains a separate explicit application; legacy data is preserved.
   Template SHA-256 `36895c5add8d81f02bd8cd42a2b213e52cd85292d76661cddd180cc0d61b9421`.
 - Method: https://arxiv.org/abs/2609.12541 ; upstream source pinned in dependency.lock.json.
 - Website: https://agp.54.209.185.15.sslip.io/
-- Public source: https://github.com/andlyu/agp-remote-yam ; physical-tested deployment `d0531e1ab59ba07db09e1740dfb38c3ca958bd47`; final UI status refinement pending.
+- Public source: https://github.com/andlyu/agp-remote-yam ; physical-tested deployment `d0531e1ab59ba07db09e1740dfb38c3ca958bd47`; final serving revision is exposed by `/api/config.source_revision` and recorded in the deployment receipt.
 - Human join: editable name/email with browser autocomplete; confirmed browser
   values prefill on return. The AgP UI contains no MEMO controls.
 - Attribution: run metadata and UI retain `Agent as Policy`, confirmed runner,
@@ -250,3 +250,26 @@ retained replay have evidence. Both15-second requirements remain unchecked.
 The final all-gates completion requirement remains unchecked because those
 requirements failed; this integration is functional but **not harness-complete**.
 No visibility exception or research-based timing exemption is asserted.
+
+### Final UI/control review
+
+- Completed runs say Agent finished; failed initialization says Failed. Elapsed
+  waiting and measured movement-completion timing are explicit. The UI never
+  represents queue admission, inference or camera playback as method motion.
+- Direct selection: `/?run=0090e3128d6c47718f0b9915b7240a4f` within the owning
+  browser. Replay is protected by the same ownership cookie.
+- Run history does not detach Stop from an active robot session. Stop targets
+  the actual active run even while reviewing an older completed run; it is
+  labelled Stop active run in that state. Mock-only browser verification
+  started a waiting run, selected older history, then stopped the active run;
+  controls returned to idle and the worker was reaped.
+- Focused identity/ownership/active-state regressions:18 passed in8.57 s. The
+  full adapter suite previously passed76 tests in14.12 s after the calibration
+  correction. Actual model/mock and physical receipts remain distinct.
+- Design review preserved BluPe colors/layout and corrected small low-contrast
+  support text. The hidden upload preview has no image until the user selects
+  a file; it is not a shipped broken image. Existing font identity is retained.
+
+Remaining: both15-second physical-motion targets, with no research-grounded
+exemption; the all-gates completion box therefore remains unchecked. A usable
+physical AgP integration and passing software tests do not erase those misses.
