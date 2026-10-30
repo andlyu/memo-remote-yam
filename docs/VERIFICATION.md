@@ -2,7 +2,7 @@
 
 ## MEMO integration — 2026-10-30
 
-- Standalone regression suite: 48 passed in 9.12 s, Python 3.14.7.
+- Standalone regression suite: 49 passed in 9.15 s, Python 3.14.7.
 - Real Codex 0.157.0 / gpt-6-astra smoke with mock robot: PASS in 198.42 s.
   A queued owner correction became guidance and a parameterized template; a
   second coding-agent run retrieved prior memory for a related task. This smoke
@@ -18,6 +18,8 @@
   modes; an owner correction received a delivery receipt; the MEMO panel showed
   a learned guidance entry. This browser test used an explicitly scripted mock
   fixture and synthetic/unavailable preview video, not a physical robot.
+- Source publication: public `andlyu/agp-remote-yam`; shared Playground integration
+  in `andlyu/blupe-remote-yam` PR #156.
 - Public physical execution, container model authentication and production
   activation remain UNVERIFIED. The current web host has no Docker executable;
   do not treat the local coding-agent smoke as public worker isolation evidence.
