@@ -10,29 +10,29 @@ integration as complete.
 
 ## Completion requirements
 
-- [ ] A usable website exists, with an associated repository containing the
+- [x] A usable website exists, with an associated repository containing the
   website's source code. Record both links and the deployed source revision.
 - [x] The website and its source repository are public, unless an explicit
   public-visibility exception for either is recorded below.
-- [ ] The website clearly names the actual approach/method being run. Use the
+- [x] The website clearly names the actual approach/method being run. Use the
   executed method's name; Spotter is an example, not a shared hardcoded label.
-- [ ] When a human joins, collect or confirm their name and email. Prefill known
+- [x] When a human joins, collect or confirm their name and email. Prefill known
   identity/default values where available and let the runner edit both fields
   before joining.
-- [ ] Run context includes the actual approach and confirmed runner identity;
+- [x] Run context includes the actual approach and confirmed runner identity;
   the website makes clear which method is running and whose run it is.
-- [ ] Automated test runs retain the actual approach name and explicitly label
+- [x] Automated test runs retain the actual approach name and explicitly label
   their runner as `Automated` or an equivalent clearly automated identity.
   They require no interactive human signup. Do not invent a person's email
   address for automated runs.
-- [ ] A person can use the website to run the integrated paper's method on
+- [x] A person can use the website to run the integrated paper's method on
   physical YAM robots/arms. Record a verified physical execution of that method.
-- [ ] The actual physical arms are visible live on the website while the method
+- [x] The actual physical arms are visible live on the website while the method
   runs, so a visitor can see that it is executing on real hardware.
-- [ ] Immediately after a run finishes, the person can replay that just-completed
+- [x] Immediately after a run finishes, the person can replay that just-completed
   physical YAM execution through the website, with retained footage showing the
   actual arms executing the integrated method.
-- [ ] The person can browse/select previous runs on the website and replay their
+- [x] The person can browse/select previous runs on the website and replay their
   retained physical arm footage, associated with the executed method and run.
   Mock animations do not satisfy either replay requirement.
 - [ ] The website is intuitive: a new visitor, without coaching, can find how to
@@ -138,7 +138,7 @@ MEMO remains a separate explicit application; legacy data is preserved.
   Template SHA-256 `36895c5add8d81f02bd8cd42a2b213e52cd85292d76661cddd180cc0d61b9421`.
 - Method: https://arxiv.org/abs/2609.12541 ; upstream source pinned in dependency.lock.json.
 - Website: https://agp.54.209.185.15.sslip.io/
-- Public source: https://github.com/andlyu/agp-remote-yam ; corrected deployment pending.
+- Public source: https://github.com/andlyu/agp-remote-yam ; physical-tested deployment `d0531e1ab59ba07db09e1740dfb38c3ca958bd47`; final UI status refinement pending.
 - Human join: editable name/email with browser autocomplete; confirmed browser
   values prefill on return. The AgP UI contains no MEMO controls.
 - Attribution: run metadata and UI retain `Agent as Policy`, confirmed runner,
@@ -200,3 +200,53 @@ remain unchecked; do not call this integration complete.
 - Adapter regressions:76 passed in14.12 s, including contradictory/missing
   calibration rejection and preservation of encoder command coordinates.
 - Corrected physical execution/replay acceptance still pending.
+
+### Physical acceptance attempt 2 — verified execution, timing missed
+
+- Normal deployed UI run `0090e3128d6c47718f0b9915b7240a4f`, source
+  `d0531e1ab59ba07db09e1740dfb38c3ca958bd47`, RoboHouse YAM, actual Astra medium
+  coding agent, runner `Automated`, email null. No MEMO workspace or runtime.
+- Browser page entry23:11:23.3304Z; Run click23:11:34.516Z; server receipt
+  23:11:34.586Z; generated trajectory requested23:12:25.422Z; matched measured
+  physical completion23:12:26.961Z. The timestamp records completion, not
+  independently annotated visual motion onset. Clock alignment is not claimed.
+- Actual agent-generated `scratch/adjust_once.py` performed one +0.04 rad left
+  joint-0 request from fresh state, preserving other targets and grippers.
+  Measured joint0 changed−0.022698 to0.015068 rad (+0.037766 rad); measured
+  other-joint drift≤0.000382 rad. Fresh post-motion RGB images were retained.
+  This verifies a small physical AgP program-execution test, not manipulation
+  benchmark performance or the paper's reported success rates.
+- Run-to-measured-completion52.445 s; entry-to-completion63.631 s. No method
+  trajectory was requested until≈50.835 s after server creation, so the15-second
+  requirements are missed. No research-grounded exception is claimed.
+- Timeline: queue/preparation≈11.2 s; coding agent started13.7 s; initial state
+  and camera calls27.6–35.2 s; generated movement50.8 s; final agent result67.0 s.
+  Model reasoning/observation and robot setup are measured contributors, not
+  research-based exemptions. Medium reasoning is retained; official guidance
+  recommends evaluating quality/latency before changing effort for code:
+  https://developers.openai.com/api/docs/guides/deployment-checklist#set-up-reasoningeffort .
+- Actual retained camera replay:67.7 s,2238628 bytes, same run/robot. Owner-scoped
+  path `/api/runs/0090e3128d6c47718f0b9915b7240a4f/replay.mp4`. Normal website
+  replay played successfully (0:34/1:07 visibly advancing). After reloading the
+  website, the completed run can be selected from Your runs and replayed again.
+- Evidence bundle from the repair chat: `physical-run-receipt.json`,
+  `physical-attempt-2.mp4`, timestamped screen evidence and `replay-playing.png`.
+  Local evidence is operator-owned; repository links do not publish room footage.
+- Human interface: name/email are required, editable native fields; browser
+  autocomplete plus confirmed local saved values provide known defaults. No
+  identity is guessed for a new visitor. Automated UI bypasses human signup
+  explicitly via `?automated=1`; metadata and the queue retain Automated.
+
+| Run | Click | Actual method motion / evidence | Elapsed | Outcome |
+| --- | --- | --- | --- | --- |
+| `b7dabdb16c83459dbd72052a6c73bc70` |23:08:30.629Z|No agent trajectory; calibration adapter failed; real footage retained|No motion|Missed/unverified|
+| `0090e3128d6c47718f0b9915b7240a4f` |23:11:34.516Z|Generated trajectory≈50.835 s after creation; measured completion52.445 s after click; actual live/replay footage|>15 s; visual onset not independently annotated|Missed target; physical execution verified|
+
+### Current gate review
+
+Website/source, method isolation, join identity, automated attribution, genuine
+physical coding-agent execution, live actual arms and immediate/historical
+retained replay have evidence. Both15-second requirements remain unchecked.
+The final all-gates completion requirement remains unchecked because those
+requirements failed; this integration is functional but **not harness-complete**.
+No visibility exception or research-based timing exemption is asserted.

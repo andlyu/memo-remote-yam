@@ -10,6 +10,15 @@ async function api(path, value) {
   return result;
 }
 function error(message) { $("error").textContent = message || ""; $("error").hidden = !message; }
+function displayStatus(run){return run.error?"Failed":terminal.has(run.status)&&!run.active&&run.outcome?.status==="done"?"Agent finished":run.status.replaceAll("_"," ");}
+function timingLabel(run){
+ if(run.mode==="offline_mock")return "Mock robot · no physical execution";
+ const timing=run.timing||{};
+ if(timing.run_to_motion_s!=null)return "Measured movement completed "+timing.run_to_motion_s.toFixed(1)+" s after Run. Visual onset timing is unverified.";
+ if(terminal.has(run.status)&&!run.active)return "Ended with no verified method-driven movement.";
+ const elapsed=Math.max(0,Date.now()/1000-(timing.run_clicked_at||run.created_at));
+ return "Waiting for measured method-driven movement · "+Math.floor(elapsed)+" s since Run. Queue and agent work appear below.";
+}
 function clearRun(id) { selected=id; cursor=-1; rows=[]; fileListKey=""; terminalHistoryKey=""; $("events").replaceChildren(); $("outcome").hidden=true; $("code").hidden=true; $("replay-panel").hidden=true; $("run-replay").pause(); $("run-replay").removeAttribute("src"); delete $("run-replay").dataset.run; error(""); }
 function eventRow(event) {
   const node = document.createElement("article"); node.className="event " + (event.kind==="error"?"error":"");
@@ -29,7 +38,7 @@ function renderFiles(names) {
 async function history() {
   const result=await api("/api/runs"); const old=$("experience").value;
   $("history").replaceChildren();$("experience").replaceChildren(new Option("Fresh start",""));
-  for (const run of result.runs) { const button=document.createElement("button");button.className="history-item";const title=document.createElement("strong"),meta=document.createElement("small");title.textContent=run.task;meta.textContent=(run.approach||"Agent as Policy")+" · "+(run.runner?.name||"Legacy")+" · "+run.status+" · "+new Date(run.created_at*1000).toLocaleString();button.append(title,meta);button.onclick=()=>{clearRun(run.id);poll();};$("history").append(button);if(terminal.has(run.status))$("experience").add(new Option(run.task.slice(0,35),run.id)); }
+  for (const run of result.runs) { const button=document.createElement("button");button.className="history-item";const title=document.createElement("strong"),meta=document.createElement("small");title.textContent=run.task;meta.textContent=(run.approach||"Agent as Policy")+" · "+(run.runner?.name||"Legacy")+" · "+displayStatus(run)+" · "+new Date(run.created_at*1000).toLocaleString();button.append(title,meta);button.onclick=()=>{clearRun(run.id);poll();};$("history").append(button);if(terminal.has(run.status))$("experience").add(new Option(run.task.slice(0,35),run.id)); }
   if ([...$("experience").options].some(x=>x.value===old))$("experience").value=old;
 }
 async function poll() {
@@ -37,10 +46,11 @@ async function poll() {
   try {
     const identity=selected, run=await api("/api/runs/"+identity+"?after="+cursor);
     if(identity!==selected)return;
-    $("phase").textContent=run.status.replaceAll("_"," ");$("run-title").textContent=run.task;
+    $("phase").textContent=displayStatus(run);$("run-title").textContent=run.task;
     const finished=terminal.has(run.status)&&!run.active;
 
-    $("run-attribution").textContent=(run.approach||"Agent as Policy")+" · "+(run.runner?.name||"Unattributed legacy run")+" · "+(run.robot_id||config.robot_id)+" · "+run.status.replaceAll("_"," ");
+    $("run-attribution").textContent=(run.approach||"Agent as Policy")+" · "+(run.runner?.name||"Unattributed legacy run")+" · "+(run.robot_id||config.robot_id)+" · "+displayStatus(run);
+    $("run-timing").textContent=timingLabel(run);
     renderReplay(run);
     $("run").disabled=!finished;$("stop").disabled=finished;$("robot-select").disabled=!finished;
     const nearBottom=$("events").scrollTop+$("events").clientHeight>=$("events").scrollHeight-60;
@@ -61,7 +71,7 @@ $("task-form").addEventListener("submit",async event=>{
 $("stop").onclick=async()=>{if(!selected)return;$("stop").disabled=true;try{await api("/api/runs/"+selected+"/stop",{});await poll();}catch(exc){error(exc.message);}};
 $("refresh").onclick=()=>history().catch(exc=>error(exc.message));
 $("goal").onchange=()=>{const file=$("goal").files[0];$("goal-preview").hidden=!file;if(file)$("goal-preview").src=URL.createObjectURL(file);};
-async function init(){try{const requestedRobot=new URLSearchParams(location.search).get("robot_id");config=await api("/api/config"+(requestedRobot?"?robot_id="+encodeURIComponent(requestedRobot):""));$("robot-select").replaceChildren(...config.robots.map(x=>new Option(x.name,x.id)));$("robot-select").value=config.robot_id;$("mode").textContent=config.camera_source==="synthetic"?"Synthetic cameras":config.mode==="offline_mock"?"Live cameras · mock robot":"Live cameras · API robot";$("mode").classList.toggle("mock",config.mode==="offline_mock");$("robot").textContent=config.robot_id;$("model").textContent=config.agent==="scripted"?"Scripted agent · no model usage":config.model+" · Agent as Policy";if(config.mode==="offline_mock")$("task").value="Demonstrate the offline agent → API controller loop.";await history();const active=await api("/api/runs");const current=active.runs.find(x=>!terminal.has(x.status));if(current){clearRun(current.id);await poll();}setInterval(poll,800);station();setInterval(station,10000);stopCameras=AgPCameras.start(config);}catch(exc){error(exc.message);}}
+async function init(){try{const requestedRobot=new URLSearchParams(location.search).get("robot_id");config=await api("/api/config"+(requestedRobot?"?robot_id="+encodeURIComponent(requestedRobot):""));$("robot-select").replaceChildren(...config.robots.map(x=>new Option(x.name,x.id)));$("robot-select").value=config.robot_id;$("mode").textContent=config.camera_source==="synthetic"?"Synthetic cameras":config.mode==="offline_mock"?"Live cameras · mock robot":"Live cameras · API robot";$("mode").classList.toggle("mock",config.mode==="offline_mock");$("robot").textContent=config.robot_id;$("model").textContent=config.agent==="scripted"?"Scripted agent · no model usage":config.model+" · Agent as Policy";if(config.mode==="offline_mock")$("task").value="Demonstrate the offline agent → API controller loop.";await history();const active=await api("/api/runs");const current=active.runs.find(x=>!terminal.has(x.status));const requestedRun=new URLSearchParams(location.search).get("run");if(current||requestedRun){clearRun(current?.id||requestedRun);await poll();}setInterval(poll,800);station();setInterval(station,10000);stopCameras=AgPCameras.start(config);}catch(exc){error(exc.message);}}
 $("robot-select").onchange=async()=>{
  try{config=await api("/api/config?robot_id="+encodeURIComponent($("robot-select").value));$("robot").textContent=config.robot_id;stopCameras?.();stopCameras=AgPCameras.start(config);station();}
  catch(exc){error(exc.message);}
