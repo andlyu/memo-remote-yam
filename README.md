@@ -102,29 +102,20 @@ in `dependency.lock.json`; the runner is a separate ignored checkout under
 
 ## Hosting
 
-Public prompts execute code, so public binding uses a separate container per
-run. Build the worker image, configure the model credential on the server and
-serve the app behind an HTTPS reverse proxy:
+The independent website is **<https://agp.54.209.185.15.sslip.io/>**.
+It is deployed directly from this repository, with its own service, HTTPS origin,
+run interface and skillbook. No change to the BluPe Playground website is needed.
 
-```sh
-docker build -f Dockerfile.agent -t agp-codex:0.157.0 .
-export CODEX_API_KEY=... # configure securely in the service environment
-./run.sh --host 0.0.0.0 --agent docker --public-origin https://your-domain.example
-```
+Run the standalone app on loopback behind its own HTTPS reverse proxy, using
+`--agent remote` for the rootless native coding environment. The model harness
+uses the existing authenticated server account; generated code receives no host
+login, API key, user home or container-engine socket. The pinned public Remote
+YAM dependency retains queue, lease, measured execution and Stop behavior.
 
-Only that run's workspace is mounted; the worker has a read-only root, reduced
-capabilities and process/memory/CPU limits. The browser cannot set API origins,
-credentials, models or command-line options. CSRF and browser ownership protect
-run operations and artifacts. Cookies provide local visitor identity, not an
-account system. Raw model credentials are supplied to the worker's Codex
-process; this is not a hardened credential broker.
-
-Before an open public launch, validate container model authentication and a physical trial,
-choose request/model spend limits and abuse controls, and deploy a credential
-broker if arbitrary visitors must never access a worker credential. The
-prototype does not include billing, analytics, moderation, account recovery,
-or a production deployment. [Verification status](docs/VERIFICATION.md) records
-what has actually been exercised.
+See [independent hosting and rollback](docs/HOSTING.md). Live cameras and the
+website have been verified; coding-model/MEMO checks used a mock robot and do
+not establish physical task success. The optional packet-service code is a
+separate entry point and is not used for this website.
 
 ## Tests
 
