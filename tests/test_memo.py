@@ -85,3 +85,10 @@ def test_templates_need_parameterized_function_and_run_evidence(tmp_path):
     (directory / 'workspace/scratch/leak.py').symlink_to(tmp_path / 'memory.sqlite3')
     with pytest.raises(OSError):
         channel.command('remember', dict(kind='template', content='def pick(target):\n    return target', evidence=['scratch/leak.py']))
+
+
+def test_template_keeps_fixed_grasp_orientation_but_rejects_xyz_pose():
+    from agp_remote_yam.memo import validate_template
+    validate_template('def pick(target_pos):\n    orientation = [0, 0, 90]\n    return target_pos, orientation')
+    with pytest.raises(ValueError, match='XYZ'):
+        validate_template('def pick(target_pos):\n    return dict(x=-0.3, y=0.2, z=0.1)')

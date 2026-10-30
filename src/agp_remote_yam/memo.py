@@ -68,9 +68,28 @@ def validate_template(content):
     function = tree.body[0]
     if not function.args.args:
         raise ValueError("A skill template needs scene-dependent parameters")
+    def number(node):
+        return (isinstance(node, ast.Constant) and type(node.value) in (int, float)
+                or isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)) and number(node.operand))
+
+    def xyz(node):
+        return isinstance(node, (ast.List, ast.Tuple)) and len(node.elts) == 3 and all(number(x) for x in node.elts)
+
     for node in ast.walk(tree):
-        if isinstance(node, (ast.List, ast.Tuple)) and len(node.elts) == 3 and all(
-                isinstance(x, ast.Constant) and isinstance(x.value, (int, float)) for x in node.elts):
+        fixed = False
+        if isinstance(node, ast.Dict):
+            values = {key.value:value for key,value in zip(node.keys,node.values) if isinstance(key,ast.Constant)}
+            fixed = all(key in values and number(values[key]) for key in ('x','y','z'))
+        elif isinstance(node, ast.Assign):
+            fixed = xyz(node.value) and any(isinstance(target,ast.Name) and
+                any(name in target.id.lower() for name in ('pos','xyz')) for target in node.targets)
+        elif isinstance(node, ast.Call):
+            name = node.func.attr if isinstance(node.func,ast.Attribute) else getattr(node.func,'id','')
+            values = {kw.arg:kw.value for kw in node.keywords}
+            fixed = name == 'dict' and all(key in values and number(values[key]) for key in ('x','y','z'))
+            fixed = fixed or any(key in ('position','xyz','target_pos') and xyz(value) for key,value in values.items())
+            fixed = fixed or name in ('move_to_position','move_ee') and any(xyz(value) for value in node.args)
+        if fixed:
             raise ValueError("Replace literal XYZ coordinates with parameters before saving the template")
 
 
