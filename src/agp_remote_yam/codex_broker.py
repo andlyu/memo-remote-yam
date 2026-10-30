@@ -82,7 +82,7 @@ def execute(sock, value, *, binary, home, timeout=610):
               'features.skip_host_skill_discovery=true', 'features.remote_control=false',
               'features.browser_use=false', 'features.computer_use=false',
               'features.js_repl=false', 'features.code_mode=false',
-              'mcp_servers={}', 'notify=[]', 'model_reasoning_effort="high"',
+              'mcp_servers={}', 'notify=[]', 'model_reasoning_effort="medium"',
               'features.shell_tool=true', 'features.unified_exec=true',
               'features.apply_patch_freeform=true', 'features.view_image=true',
               'features.shell_snapshot=false', 'features.shell_snapshot_v2=false',

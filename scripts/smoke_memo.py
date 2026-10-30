@@ -11,9 +11,10 @@ def main():
  parser.add_argument('--memory-encoder',choices=('semantic','lexical'),default='semantic')
  parser.add_argument('--agent',choices=('codex','docker','remote'),default='codex')
  parser.add_argument('--duration',type=int,default=180)
+ parser.add_argument('--namespace',default='memo-smoke',help='Use a fresh namespace for independent deployment validation')
  args=parser.parse_args()
  manager=RunManager(Settings(data=args.data,mock_robot=True,model=args.model,memory_encoder=args.memory_encoder,agent_mode=args.agent))
- start=time.monotonic();owner='memo-smoke';receipts=[]
+ start=time.monotonic();owner=args.namespace;receipts=[]
  def wait(identity):
   deadline=time.monotonic()+args.duration+30
   while identity in manager.active and time.monotonic()<deadline:time.sleep(.15)

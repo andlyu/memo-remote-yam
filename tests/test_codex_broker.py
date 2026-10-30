@@ -27,6 +27,7 @@ import json,sys
 assert 'features.shell_tool=true' in sys.argv
 assert 'features.unified_exec=true' in sys.argv
 assert 'mcp_servers={}' in sys.argv
+assert 'model_reasoning_effort="medium"' in sys.argv
 assert 'shell_environment_policy.inherit="none"' in sys.argv
 assert any(v.startswith('shell_environment_policy.set=') and 'HOME="/tmp"' in v and '/opt/python/bin' in v for v in sys.argv)
 def emit(value):print(json.dumps(value),flush=True)

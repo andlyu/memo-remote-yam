@@ -46,6 +46,9 @@ home directory or container-engine socket is mounted in generated code.
 
 This transport pins **Codex 0.159.0** on both sides and uses its experimental
 app-server environment protocol. Test the exact version before activation.
+The harness uses Astra's catalog-default medium reasoning and a container-only
+tool environment; the account's model-only tool settings are overridden only
+for this isolated harness.
 The worker user needs a normal rootless Podman installation and subordinate
 UID/GID range, with no Docker-group or sudo access. The separate broker accepts
 only that worker UID over a filesystem-protected Unix socket. Keep the existing
