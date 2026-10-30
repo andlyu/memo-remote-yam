@@ -24,10 +24,23 @@ class YamGeometry:
         from remote_yam.mujoco_ik import BimanualRelativeIK, ROBOT_SHA256
         if report.get("kinematics", {}).get("robot_model_sha256") != ROBOT_SHA256:
             raise ValueError("Calibration does not identify the dependency's canonical YAM model")
-        native = report["native_joint_calibration"]
-        if native["coordinate_convention"] != "native_i2rt_updated":
-            raise ValueError("Unsupported native joint coordinate convention")
-        offsets = native["additional_offsets_rad"]
+        native = report.get("native_joint_calibration")
+        binding = report.get("model_joint_calibration")
+        if native is not None:
+            if binding is not None or native.get("coordinate_convention") != "native_i2rt_updated":
+                raise ValueError("Unsupported or ambiguous native joint coordinate convention")
+            offsets = native["additional_offsets_rad"]
+        else:
+            # RoboHouse retains original encoders with a published model
+            # correction, rather than YAM-1's native-corrected coordinates.
+            # Bind it to the dependency's exact station profile; never guess
+            # missing offsets or apply native shifts a second time.
+            from remote_yam.controller_workspace import workspace_for_robot
+            profile = workspace_for_robot(report.get("robot_id"))
+            if not binding or not profile or profile.calibration_id is None:
+                raise ValueError("Missing supported joint calibration binding")
+            profile.validate_report(report)
+            offsets = binding["offsets_rad"]
         self.ik = BimanualRelativeIK(base_spacing_m=report["base_geometry"]["spacing_m"],
             joint_offsets_rad=offsets["left"] + offsets["right"],
             joint_limits=report.get("joint_limits"))

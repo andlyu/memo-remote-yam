@@ -177,3 +177,26 @@ Timed visual evidence remains necessary to check either15-second criterion.
 
 Pending corrected release and browser verification. Unverified requirements
 remain unchecked; do not call this integration complete.
+
+### Live acceptance attempt 1
+
+- Tested application `91f1ed2`, run `b7dabdb16c83459dbd72052a6c73bc70`,
+  Agent as Policy / Automated / RoboHouse YAM. Normal browser Run clicked
+  2026-10-30T23:08:30.629Z (server arrival23:08:30.698Z).
+- The adapter raised `KeyError: native_joint_calibration` before agent startup
+  or any method trajectory. This is a failed physical execution, never a pass.
+  No timed-out motion was retried. Its actual camera footage was retained
+  (14.7 s,523461 bytes); footage alone does not establish AgP execution.
+- Every-click result: no verified method motion, missed/unverified target.
+  Entry-to-click itself exceeded15 s; entry-to-motion cannot pass.
+- Correction: support the pinned public dependency's explicit RoboHouse
+  `original_i2rt_model_corrected` binding, validating its exact calibration ID,
+  canonical model hash, twelve offsets and base spacing. Native and corrected
+  bindings cannot be mixed. No zero-offset fallback or guard bypass.
+- Read-only preflight: live RoboHouse calibration
+  `40a9220259748447f0564404fbc0aa40e236786182992895cef9ee0e51f88f11`,
+  maximum FK difference3.3306690738754696e-16 from its published zero pose,
+  measured6-joint state and fresh top/wrist RGB capture verified. No lease/motion.
+- Adapter regressions:76 passed in14.12 s, including contradictory/missing
+  calibration rejection and preservation of encoder command coordinates.
+- Corrected physical execution/replay acceptance still pending.

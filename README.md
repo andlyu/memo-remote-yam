@@ -75,7 +75,9 @@ unfinished runs interrupted and never resumes motion automatically.
 ## Robot contract and differences from the paper
 
 - `state`, `frames`, `move_ee`, `move_joints`, `gripper`, `status`, `help` are
-  available through the original client. Both arms are supported sequentially.
+  available through the original client. Both arms are supported sequentially. YAM-1 uses native-corrected joints;
+  RoboHouse uses its exact published original-encoder/model-correction binding.
+  Missing or contradictory calibration is rejected rather than guessed.
   Poses use each arm's own base; quaternions are wxyz and joints are radians.
 - The API accepts 10 Hz joint waypoints. Cartesian commands use the pinned
   runner's calibrated YAM FK/IK and joint/contact checks. Existing packet,

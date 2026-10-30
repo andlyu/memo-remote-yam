@@ -59,3 +59,39 @@ def test_budget_and_limits_reject_without_returning_packet(geometry, station):
 def test_invalid_numeric_targets(value):
     with pytest.raises(ValueError):
         finite_vector(value, 6, "joints")
+
+
+def robohouse_report():
+    from remote_yam.controller_workspace import workspace_for_robot
+    from remote_yam.mujoco_ik import ROBOT_SHA256
+    profile=workspace_for_robot('robot-ba8413962083809c')
+    return dict(robot_id=profile.robot_id,base_geometry=dict(spacing_m=.62),
+        kinematics=dict(robot_model_sha256=ROBOT_SHA256),
+        model_joint_calibration=dict(calibration_id=profile.calibration_id,
+            coordinate_convention='original_i2rt_model_corrected',canonical_model_sha256=ROBOT_SHA256,
+            offsets_rad=dict(left=list(profile.joint_offsets_rad[:6]),right=list(profile.joint_offsets_rad[6:]))))
+
+
+def test_robohouse_original_encoder_binding_preserves_command_coordinates(station):
+    from agp_remote_yam.geometry import YamGeometry
+    from remote_yam.controller_workspace import workspace_for_robot
+    report=robohouse_report(); geometry=YamGeometry(report)
+    profile=workspace_for_robot(report['robot_id'])
+    assert np.allclose(geometry.ik.joint_offsets_rad,profile.joint_offsets_rad)
+    observation=station.get_robot_observation('yam-1')
+    target=np.deg2rad(observation['left_joints_deg']);target[0]+=.01
+    points=geometry.joints('left',target.tolist(),observation,0)
+    assert np.allclose(points[-1]['left_joints_deg'],np.rad2deg(target))
+    assert points[-1]['right_joints_deg']==observation['right_joints_deg']
+
+
+@pytest.mark.parametrize('change', ['offset','identity','spacing','native','missing'])
+def test_robohouse_rejects_contradictory_or_missing_calibration(change):
+    from agp_remote_yam.geometry import YamGeometry
+    report=robohouse_report()
+    if change=='offset':report['model_joint_calibration']['offsets_rad']['left'][1]+=.01
+    if change=='identity':report['model_joint_calibration']['calibration_id']='unverified'
+    if change=='spacing':report['base_geometry']['spacing_m']=.7
+    if change=='native':report['native_joint_calibration']=dict(coordinate_convention='native_i2rt_updated')
+    if change=='missing':report.pop('model_joint_calibration')
+    with pytest.raises(ValueError):YamGeometry(report)
