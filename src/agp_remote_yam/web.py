@@ -8,21 +8,25 @@ from importlib.resources import files
 import io
 import json
 import mimetypes
+import os
 from pathlib import Path
 import secrets
 from urllib.parse import parse_qs, unquote, urlsplit
 from PIL import Image
 from .dependency import REMOTE_YAM_COMMIT, UPSTREAM_AGP_COMMIT
-from .manager import RunManager
+from .manager import RunManager, ROBOTS
 from .workspace import Workspace
 from .video import CAMERA_ROLES, stream_config, fetch_media
+from .identity import APPROACH, runner_identity
 
 
 class App:
     def __init__(self, settings, *, public_origin=None):
         self.manager = RunManager(settings)
         self.settings = settings
-        self.video_stream = stream_config(settings.robot_id) if settings.camera_source == "api" else None
+        self.video_streams = {robot: stream_config(robot) if settings.camera_source == "api" else None
+                              for robot in {settings.robot_id, *ROBOTS}}
+        self.video_stream = self.video_streams[settings.robot_id]
         self.public_origin = public_origin.rstrip("/") if public_origin else None
         secret_file = Path(settings.data).resolve() / "web-secret"
         if not secret_file.exists():
@@ -95,6 +99,21 @@ class App:
             result = json.dumps(result, allow_nan=False).encode()
         elif isinstance(result, str):
             result = result.encode()
+        media_headers = []
+        if path.endswith("/replay.mp4") and status == 200:
+            media_headers.append((b"accept-ranges", b"bytes"))
+            if headers.get("range"):
+                import re
+                match = re.fullmatch(r"bytes=(\d+)-(\d*)", headers["range"])
+                if not match or int(match[1]) >= len(result):
+                    status, result = 416, b""
+                else:
+                    start = int(match[1]); end = min(int(match[2]) if match[2] else len(result)-1, len(result)-1)
+                    if end < start:
+                        status, result = 416, b""
+                    else:
+                        media_headers.append((b"content-range", f"bytes {start}-{end}/{len(result)}".encode()))
+                        result, status = result[start:end+1], 206
         cookie = f"agp_visitor={visitor}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000"
         if self.public_origin and self.public_origin.startswith("https://"):
             cookie += "; Secure"
@@ -102,26 +121,46 @@ class App:
             (b"content-type", content_type.encode()), (b"content-length", str(len(result)).encode()),
             (b"set-cookie", cookie.encode()), (b"cache-control", b"no-store"),
             (b"x-content-type-options", b"nosniff"), (b"referrer-policy", b"same-origin"),
-            (b"content-security-policy", b"default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'")]))
+            (b"content-security-policy", b"default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'")] + media_headers))
         await send(dict(type="http.response.body", body=result))
 
     def route(self, method, path, query, body, owner, csrf):
+        robot_id = query.get("robot_id", [self.settings.robot_id])[0]
+        if robot_id not in {self.settings.robot_id, *ROBOTS}:
+            raise ValueError("Choose a configured YAM station")
+        video_stream = self.video_streams[robot_id]
         if method == "GET" and path in ("/", "/static/app.js", "/static/style.css", "/static/cameras.js"):
             name = "index.html" if path == "/" else path.rsplit("/", 1)[-1]
             mime = {"index.html": "text/html; charset=utf-8", "app.js": "text/javascript", "cameras.js": "text/javascript", "style.css": "text/css"}[name]
+            if self.settings.memo_site and name in ("index.html", "app.js"):
+                name = "memo-" + name
             return 200, mime, files("agp_remote_yam").joinpath("static", name).read_bytes()
         if method == "GET" and path in ("/static/hls.light.min.js", "/static/HLS-LICENSE"):
             from .dependency import runner_root
             asset = runner_root() / "static" / path.rsplit("/", 1)[-1]
             return 200, "text/javascript" if path.endswith(".js") else "text/plain", asset.read_bytes()
-        if method == "GET" and self.video_stream and path.startswith("/" + self.video_stream["path"] + "/"):
-            return fetch_media(self.video_stream, path, query)
+        if method == "GET":
+            for stream in self.video_streams.values():
+                if stream and path.startswith("/" + stream["path"] + "/"):
+                    return fetch_media(stream, path, query)
         if method == "GET" and path == "/api/config":
-            return 200, "application/json", dict(csrf=csrf, robot_id=self.settings.robot_id,
+            return 200, "application/json", dict(csrf=csrf, robot_id=robot_id,
+                robots=[dict(id=k, name=v) for k,v in ROBOTS.items()],
                 model=self.settings.model, mode="offline_mock" if self.settings.offline else "physical_api",
                 agent="scripted" if self.settings.demo else self.settings.agent_mode, remote_yam_revision=REMOTE_YAM_COMMIT,
-                camera_source=self.settings.camera_source, camera_roles=list(CAMERA_ROLES), video_stream=self.video_stream,
-                agp_reference_revision=UPSTREAM_AGP_COMMIT)
+                camera_source=self.settings.camera_source, camera_roles=list(CAMERA_ROLES), video_stream=video_stream,
+                agp_reference_revision=UPSTREAM_AGP_COMMIT, approach="Agent as Policy + MEMO" if self.settings.memo_site else APPROACH,
+                server_time=__import__("time").time(), source_repository="https://github.com/andlyu/agp-remote-yam",
+                source_revision=os.environ.get("AGP_SOURCE_REVISION", "development"))
+        if method == "GET" and path == "/api/station":
+            if self.settings.offline:
+                return 200, "application/json", dict(connected=False, mock=True, message="Mock robot · no physical control")
+            from remote_yam.session import HttpSessionAPI
+            snapshot = HttpSessionAPI(self.settings.origin, robot_id=robot_id, timeout_s=5).get_queue_snapshot()
+            station = next((s for s in snapshot.get("stations", []) if s.get("jetson_id") == robot_id), {})
+            return 200, "application/json", dict(connected=station.get("connected") is True,
+                available=station.get("available") is True, queue_ready=station.get("queue_ready") is True,
+                message="Robot connected" if station.get("connected") else "Robot offline · runs will wait in the queue")
         if method == "GET" and path.startswith("/api/cameras/"):
             role = path.rsplit("/", 1)[-1].removesuffix(".jpg")
             if role not in CAMERA_ROLES:
@@ -134,17 +173,21 @@ class App:
                 from urllib.parse import quote
                 source = CameraFrameSource(self.settings.origin, camera_names=(role,))
                 data = source.fetch(role, self.settings.origin.rstrip("/") + "/v1/robots/" +
-                    quote(self.settings.robot_id, safe="") + "/cameras/" + role + ".jpg").jpeg
+                    quote(robot_id, safe="") + "/cameras/" + role + ".jpg").jpeg
             return 200, "image/jpeg", data
         if path == "/api/runs" and method == "GET":
             rows = [{k: v for k, v in row.items() if k != "owner"}
-                    for row in self.manager.store.list() if row.get("owner") == owner]
+                    for row in self.manager.store.list() if row.get("owner") == owner and
+                    (self.settings.memo_site or row.get("approach") == APPROACH and not row.get("memo_enabled"))]
             return 200, "application/json", dict(runs=rows)
         if path == "/api/memories" and method == "GET":
+            if not self.settings.memo_site:
+                raise FileNotFoundError()
             return 200, "application/json", dict(version=self.manager.skillbook.version(),
                 encoder=self.manager.skillbook.encoder.identity, memories=self.manager.skillbook.list(owner))
         if path == "/api/runs" and method == "POST":
             value = json.loads(body)
+            runner = runner_identity(value.get("runner"), automated_default=self.settings.memo_site)
             goal = None
             if value.get("goal_image"):
                 encoded = value["goal_image"]
@@ -160,7 +203,8 @@ class App:
                 goal = target.getvalue()
             identity = self.manager.start(value.get("task"), owner, duration=value.get("duration_s", 300),
                 parent=value.get("experience_run") or None, goal=goal, memo=value.get("memo", False),
-                memory_version=value.get("memory_version"))
+                memory_version=value.get("memory_version"), runner=runner, timing=value.get("timing"),
+                robot_id=value.get("robot_id"))
             return 202, "application/json", dict(id=identity)
         if path.startswith("/api/runs/"):
             parts = path.split("/")
@@ -171,7 +215,15 @@ class App:
             if len(parts) == 5 and parts[4] == "stop" and method == "POST":
                 self.manager.stop(identity, owner)
                 return 200, "application/json", {"status": "stop_requested"}
+            if len(parts) == 5 and parts[4] == "replay.mp4" and method == "GET":
+                directory = self.manager.owned(identity, owner)
+                from .recording import replay_info
+                if (replay_info(directory) or {}).get("status") != "ready":
+                    raise FileNotFoundError()
+                return 200, "video/mp4", Workspace(directory / "recording").read("physical.mp4", 256_000_000)
             if len(parts) == 5 and parts[4] == "corrections" and method == "POST":
+                if not self.settings.memo_site:
+                    raise FileNotFoundError()
                 value = json.loads(body)
                 row = self.manager.correct(identity, owner, value.get("text"), value.get("request_id"))
                 return 202, "application/json", {"correction": {k:v for k,v in row.items() if k != "namespace"}}

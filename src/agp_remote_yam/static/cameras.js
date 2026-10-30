@@ -36,7 +36,7 @@
         draw(tile.canvas, image, [0,0,image.naturalWidth,image.naturalHeight]);
         tile.canvas.dataset.frameSource = config.camera_source === "synthetic" ? "synthetic" : "api_snapshot";
       };
-      image.src = "/api/cameras/" + tile.role + ".jpg";
+      image.src = "/api/cameras/" + tile.role + ".jpg?robot_id="+encodeURIComponent(config.robot_id);
     }
     if (config.camera_source === "synthetic") { label.textContent = "Synthetic camera fixtures · offline test"; return; }
     if (!stream) { label.textContent = "Public API snapshots · no video stream configured"; return; }
@@ -92,10 +92,13 @@
       animation = requestAnimationFrame(paint);
     }
     play.onclick = () => video.play().catch(() => {status = "Press play to resume cameras";});
-    video.addEventListener("error", retry);
-    document.addEventListener("visibilitychange", () => {if (!document.hidden && !stopped) connect();});
-    window.addEventListener("pagehide", () => {stopped = true; clearTimeout(timer); cancelAnimationFrame(animation); cleanup();});
-    connect(); animation = requestAnimationFrame(paint);
+    function visible(){if(!document.hidden&&!stopped)connect();}
+    function stop(){stopped=true;clearTimeout(timer);cancelAnimationFrame(animation);cleanup();video.removeEventListener("error",retry);document.removeEventListener("visibilitychange",visible);window.removeEventListener("pagehide",stop);}
+    video.addEventListener("error",retry);
+    document.addEventListener("visibilitychange",visible);
+    window.addEventListener("pagehide",stop);
+    connect();animation=requestAnimationFrame(paint);
+    return stop;
   }
   root.AgPCameras = {start, crop};
   if (typeof module !== "undefined") module.exports = {crop};

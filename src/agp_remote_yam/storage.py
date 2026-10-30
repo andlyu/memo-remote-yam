@@ -22,16 +22,18 @@ class RunStore:
         self.root.mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
 
-    def create(self, task, *, parent=None):
+    def create(self, task, *, parent=None, with_memo=False):
         identity = uuid.uuid4().hex
         directory = self.root / identity
         workspace = directory / "workspace"
-        for name in ("scratch", "frames", "bridge", "bridge_right", "bridge_memo", "knowledge", "goal"):
+        for name in ("scratch", "frames", "bridge", "bridge_right", "knowledge", "goal"):
             (workspace / name).mkdir(parents=True, exist_ok=True)
         for source, target in (("robot_client.py", "robot_client.py"), ("INTERFACE.md", "README_interface.md")):
             (workspace / target).write_bytes(files("agp_remote_yam").joinpath("assets", source).read_bytes())
-        for name in ("memo_client.py", "MEMO.md"):
-            (workspace / name).write_bytes(files("agp_remote_yam").joinpath("assets", name).read_bytes())
+        if with_memo:
+            (workspace / "bridge_memo").mkdir()
+            for name in ("memo_client.py", "MEMO.md"):
+                (workspace / name).write_bytes(files("agp_remote_yam").joinpath("assets", name).read_bytes())
         metadata = dict(id=identity, task=task, created_at=time.time(), status="preparing", parent=parent,
                         outcome=None, mode=None)
         if parent:

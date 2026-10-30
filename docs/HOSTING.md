@@ -8,8 +8,9 @@ measured execution and Stop implementation.
 
 The live standalone site is <https://agp.54.209.185.15.sslip.io/>.
 It uses real public cameras independently of robot execution. A user submits
-a task only on this site; MEMO learning, corrections, skillbook and run files
-remain in its own browser-scoped interface.
+a task only on this site; AgP programs, observations, explicit experience reuse,
+runner identity and physical replay remain in its browser-scoped interface.
+This origin must run without `--memo-site`; MEMO is a separate application.
 
 ## Native rootless service
 
@@ -22,7 +23,7 @@ app and the optional packet-service entry point. For this website **omit
 python -m agp_remote_yam \
   --host 127.0.0.1 --port 8828 \
   --public-origin https://your-agent-host.example \
-  --agent remote --memory-encoder semantic --data /var/lib/agp-remote-yam
+  --agent remote --data /var/lib/agp-remote-yam
 ```
 
 Keep the model harness in the account that is already authenticated. Generated
@@ -54,8 +55,8 @@ server address; an operator-owned DNS name can point to the same service later.
 
 ## Verification and rollback
 
-Check HTTPS, `/api/config`, real camera playback, both Learning choices, the
-browser-owned skillbook, and a mock-only coding-model test before a physical
+Check HTTPS, `/api/config`, real camera playback, absence of MEMO controls and protocol files, editable
+runner identity, run history/replay, and an actual-model/mock-robot test before a physical
 trial. Check CSRF, ownership and Stop through the existing offline suite.
 Do not submit a physical robot task just to test a deployment.
 
@@ -65,8 +66,7 @@ passed 57 tests on the deployed application revision. These checks do not
 establish physical task success.
 
 To withdraw this website, remove only its dedicated proxy site include,
-validate and reload Caddy, then stop/disable its own web unit. Keep data and
-skillbook backups. Other websites and the public robot API are independent.
+validate and reload Caddy, then stop/disable its own web unit. Keep run-data and any legacy skillbook backups. Other websites and the public robot API are independent.
 
 
 The startup repair avoids loading the semantic encoder for empty visible memory
@@ -77,3 +77,18 @@ verified a measured relative joint change; the best observed first mock command
 completion was 24.376 seconds. This is not a physical latency pass. Use the
 [shared completion harness and audit](COMPLETION-CHECKLIST.md) for acceptance;
 physical timing, runner identity and retained replay gates remain open.
+
+### AgP-only deployment repair
+
+The correction from combined application `31b604f` makes pure Agent as Policy
+the default. Existing MEMO records stay on disk and are excluded from AgP history.
+Use an isolated release directory, install its wheel, atomically switch only
+`/opt/agp-remote-yam`, then restart only `agp-web.service` after checking for active
+runs. Roll back the wheel and symlink together. Preserve the broker, authentication,
+robot service and public Playground. Set `AGP_SOURCE_REVISION` to the deployed commit.
+
+Physical replay requires host `ffmpeg`/`ffprobe` and the existing public camera
+feed. The recorder is independent of the generated-code container and saves to
+the run's `recording/` directory. Owner checks protect video and byte-range
+playback. Missing footage is labelled unavailable, never replaced by mock video.
+Use per-executor cleanup; do not remove every Podman container on web-service stop.

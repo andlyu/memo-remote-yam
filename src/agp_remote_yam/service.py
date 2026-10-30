@@ -124,7 +124,7 @@ class Worker:
             if version is not None and (type(version) is not int or not 0 <= version <= self.book.version()):
                 raise ValueError("Invalid memory version")
             bridge = PacketBridge(value.get("observation", {}), threading.Event())
-            metadata, directory = self.store.create(task)
+            metadata, directory = self.store.create(task, with_memo=True)
             journal = Journal(directory)
             memory = MemoryChannel(self.book, namespace, directory, journal,
                                    enabled=value.get("memo", False), version=version)

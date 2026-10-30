@@ -8,6 +8,10 @@ import time
 from .dependency import runner_root
 from .storage import RunStore, Journal
 from .runtime import AgentRuntime
+from .identity import APPROACH, runner_identity, run_timing
+from .recording import RunRecording, replay_info
+
+ROBOTS = {"yam-1": "YAM-1", "robot-ba8413962083809c": "RoboHouse YAM"}
 
 
 @dataclass
@@ -22,6 +26,7 @@ class Settings:
     camera_source: str = "api"
     codex: str = "codex"
     memory_encoder: str = "lexical"
+    memo_site: bool = False
 
     @property
     def offline(self):
@@ -33,8 +38,10 @@ class RunManager:
         runner_root()
         self.settings = settings
         self.store = RunStore(Path(settings.data) / "runs")
-        from .memo import Skillbook
-        self.skillbook = Skillbook(Path(settings.data) / "skillbook.sqlite3", settings.memory_encoder)
+        self.skillbook = None
+        if settings.memo_site:
+            from .memo import Skillbook
+            self.skillbook = Skillbook(Path(settings.data) / "skillbook.sqlite3", settings.memory_encoder)
         self.lock = threading.RLock()
         self.active = {}
         # A server restart never resumes a lease or replays motion automatically.
@@ -50,13 +57,21 @@ class RunManager:
             raise PermissionError("This run belongs to another browser session")
         return directory
 
-    def start(self, task, owner, *, duration=300, parent=None, goal=None, memo=False, memory_version=None):
+    def start(self, task, owner, *, duration=300, parent=None, goal=None, memo=False, memory_version=None,
+              runner=None, timing=None, robot_id=None):
+        robot_id = robot_id or self.settings.robot_id
+        if robot_id not in {self.settings.robot_id, *ROBOTS}:
+            raise ValueError("Choose a configured YAM station")
         if not isinstance(task, str) or not 1 <= len(task.strip()) <= 4000:
             raise ValueError("Enter a task of 1–4,000 characters")
         if type(duration) is not int or not 60 <= duration <= 600:
             raise ValueError("Run duration must be 60–600 seconds")
         if type(memo) is not bool:
             raise ValueError("MEMO must be on or off")
+        if not self.settings.memo_site and (memo or memory_version is not None):
+            raise ValueError("This website runs Agent as Policy only. MEMO belongs on its separate website.")
+        runner = runner_identity(runner, automated_default=True)
+        timing = run_timing(timing)
         if parent:
             self.owned(parent, owner)
         if memory_version is not None and (type(memory_version) is not int or not 0 <= memory_version <= self.skillbook.version()):
@@ -66,16 +81,23 @@ class RunManager:
                 raise ValueError("This browser already has an active run")
             if parent:
                 self.owned(parent, owner)
-            metadata, directory = self.store.create(task.strip(), parent=parent)
+            metadata, directory = self.store.create(task.strip(), parent=parent, with_memo=self.settings.memo_site)
             journal = Journal(directory)
             runtime = AgentRuntime(directory, journal, model=self.settings.model,
                 mode="demo" if self.settings.demo else self.settings.agent_mode,
                 timeout_s=duration, executable=self.settings.codex)
-            from .memo import MemoryChannel
-            memory = MemoryChannel(self.skillbook, owner, directory, journal, enabled=memo, version=memory_version)
+            memory = None
+            if self.settings.memo_site:
+                from .memo import MemoryChannel
+                memory = MemoryChannel(self.skillbook, owner, directory, journal, enabled=memo, version=memory_version)
             runtime.memory = memory
             self.store.update(directory, owner=owner, mode="offline_mock" if self.settings.offline else "physical_api",
-                              duration_s=duration, memo_enabled=memo, memory_version=memory.version)
+                              duration_s=duration, approach="Agent as Policy + MEMO" if memo else APPROACH,
+                              runner=runner, timing=timing,
+                              robot_id=robot_id,
+                              **(dict(memo_enabled=memo, memory_version=memory.version) if memory else {}))
+            journal.add("run_requested", "Agent as Policy run requested", approach="Agent as Policy + MEMO" if memo else APPROACH,
+                        runner=runner, physical=not self.settings.offline, timing=timing)
             try:
                 runtime.check_available()
             except Exception as exc:
@@ -84,7 +106,7 @@ class RunManager:
             if goal:
                 (directory / "workspace/goal/reference.png").write_bytes(goal)
             context = dict(owner=owner, runtime=runtime, journal=journal, directory=directory,
-                           controller=None, stopped=threading.Event(), memory=memory)
+                           controller=None, stopped=threading.Event(), memory=memory, runner=runner, robot_id=robot_id)
             self.active[metadata["id"]] = context
             threading.Thread(target=self._run, args=(context, task.strip(), duration),
                              name="agp-run-" + metadata["id"][:8], daemon=True).start()
@@ -92,25 +114,30 @@ class RunManager:
 
     def _run(self, context, task, duration):
         from remote_yam.controller import RunnerController
-        from remote_yam.session import HttpSessionAPI
+        from .session import AttributedSessionAPI
         from .policy import AgPPolicy
         from .backend import ApiBackend
         from .mock import MockBackend, MockStation
         directory, runtime, journal = context["directory"], context["runtime"], context["journal"]
+        robot_id = context["robot_id"]
+        recording = RunRecording(directory, robot_id, physical=not self.settings.offline)
         try:
-            api = MockStation() if self.settings.offline else HttpSessionAPI(
-                self.settings.origin, robot_id=self.settings.robot_id, supports_trajectories=True)
-            controller = RunnerController(api, robot_id=self.settings.robot_id,
+            recording.start()
+            api = MockStation() if self.settings.offline else AttributedSessionAPI(
+                self.settings.origin, robot_id=robot_id, supports_trajectories=True,
+                runner=context["runner"])
+            controller = RunnerController(api, robot_id=robot_id,
                 recording_root=directory / "recording", submit_attempts=1)
             context["controller"] = controller
             if context["stopped"].is_set():
                 return
             factory = (lambda policy: MockBackend(directory / "workspace", policy, journal)) if self.settings.offline else (
-                lambda policy: ApiBackend(self.settings.origin, self.settings.robot_id,
+                lambda policy: ApiBackend(self.settings.origin, robot_id,
                                           directory / "workspace", policy, journal))
             policy = AgPPolicy(runtime, factory, journal)
+            policy.physical = not self.settings.offline
             journal.add("lifecycle", "Joining the mock queue" if self.settings.offline else "Joining the public robot queue")
-            controller.update_monitor_observation(api.get_robot_observation(self.settings.robot_id))
+            controller.update_monitor_observation(api.get_robot_observation(robot_id))
             controller.join_and_run(policy, task, run_duration_s=duration)
             if context["stopped"].is_set():
                 controller.stop("user_requested")
@@ -139,8 +166,24 @@ class RunManager:
                 except Exception as exc:
                     journal.add("error", "Robot Stop could not be confirmed", error_type=type(exc).__name__)
             try:
-                runtime.cancel()
-                self.store.save_experience(directory)
+                try:
+                    runtime.cancel()
+                    self.store.save_experience(directory)
+                finally:
+                    recording.finish()
+                metadata = json.loads((directory / "run.json").read_text())
+                timing = metadata["timing"]
+                first = next((e for e in journal.after() if e["kind"] == "physical_motion_measured"), None)
+                if first:
+                    timing["first_measured_motion_at"] = first["time"]
+                    timing["server_receive_to_motion_s"] = first["time"] - timing["server_received_at"]
+                    if "run_clicked_at" in timing:
+                        timing["run_to_motion_s"] = first["time"] - timing["run_clicked_at"]
+                        timing["entry_to_motion_s"] = first["time"] - timing["page_entered_at"]
+                    timing["outcome"] = "measured_motion_visual_timing_unverified"
+                else:
+                    timing["outcome"] = "not_physical" if self.settings.offline else "no_measured_motion"
+                self.store.update(directory, timing=timing, replay=replay_info(directory))
             except Exception as exc:
                 journal.add("error", "Run cleanup failed", error_type=type(exc).__name__)
             finally:
@@ -181,7 +224,10 @@ class RunManager:
             rows = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
             events = rows[max(0, cursor + 1):]
         value["events"] = events
-        value["corrections"] = self.skillbook.corrections(owner, identity)
+        value["active"] = context is not None
+        value["replay"] = replay_info(directory)
+        if self.skillbook:
+            value["corrections"] = self.skillbook.corrections(owner, identity)
         value["files"] = sorted([str(path.relative_to(directory / "workspace"))
                           for path in (directory / "workspace").rglob("*")
                           if path.is_file() and not path.is_symlink() and path.suffix in (".png", ".py", ".md", ".json", ".npy", ".npz")])

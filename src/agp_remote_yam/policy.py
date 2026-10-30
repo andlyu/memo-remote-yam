@@ -31,6 +31,8 @@ class AgPPolicy:
         self._settled_after = None
         self._lock = threading.RLock()
         self.last_step_model_s = 0.
+        self.physical = False
+        self._motion_recorded = False
 
     def public_config(self):
         return dict(provider=self.provider_name, model=self.runtime.model,
@@ -69,6 +71,8 @@ class AgPPolicy:
 
     def execute(self, points):
         self._check()
+        self.journal.add("motion_requested", "The coding agent submitted a generated trajectory",
+                         physical=self.physical, waypoint_count=len(points))
         future = Future()
         self._packets.put_nowait((points, future))
         while not future.done():
@@ -118,6 +122,15 @@ class AgPPolicy:
                 or observation.get("step_id") != self._pending["last"] + 1
                 or observation.get("settled") is not True):
             raise RuntimeError("AgP completion does not match its submitted packet")
+        baseline = self._observation or {}
+        changed = any(abs(float(a)-float(b)) > .2
+                      for arm in ("left", "right")
+                      for a, b in zip(baseline.get(arm+"_joints_deg", []), observation.get(arm+"_joints_deg", [])))
+        if self.physical and changed and not self._motion_recorded:
+            self.journal.add("physical_motion_measured", "Measured physical arm movement after the generated command",
+                             observed_at=observation.get("observed_at"), physical=True,
+                             evidence="Matched settled feedback; visually verify against retained footage")
+            self._motion_recorded = True
         self._pending = None
         self._completed = deepcopy(observation)
 

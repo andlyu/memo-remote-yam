@@ -1,10 +1,5 @@
 # Agent as Policy on Remote YAM
 
-Now includes **MEMO**: retrieve prior corrections, learn parameterized skills
-and consolidate the versioned skillbook. The standalone website has learning
-selection, live corrections and a skillbook viewer. See [MEMO](docs/MEMO.md) and
-the [BluPe Playground integration](docs/PLAYGROUND.md).
-
 A standalone website that runs a coding agent against the public Remote YAM
 API. Give it a task and an optional goal image. The agent observes cameras and
 measured state, writes and executes Python, sends a robot command, checks the
@@ -67,7 +62,7 @@ Browser task + goal image
 
 The agent remains the policy throughout the run. There is no fixed generated
 program that replaces its observe/program/act/revise loop. The UI shows agent
-messages, tool calls/results, generated files and an agent-declared outcome.
+messages, tool calls/results, generated files, confirmed runner identity and an agent-declared outcome. Physical runs retain the actual camera atlas for immediate and historical replay when the feed is available; replay failure is shown explicitly.
 Raw process events remain outside the browser workspace.
 
 Each run starts with the client, interface documentation, task, empty scratch
@@ -104,7 +99,7 @@ in `dependency.lock.json`; the runner is a separate ignored checkout under
 
 The independent website is **<https://agp.54.209.185.15.sslip.io/>**.
 It is deployed directly from this repository, with its own service, HTTPS origin,
-run interface and skillbook. No change to the BluPe Playground website is needed.
+run interface and saved workspaces. No change to the BluPe Playground website is needed.
 
 Run the standalone app on loopback behind its own HTTPS reverse proxy, using
 `--agent remote` for the rootless native coding environment. The model harness
@@ -113,8 +108,7 @@ login, API key, user home or container-engine socket. The pinned public Remote
 YAM dependency retains queue, lease, measured execution and Stop behavior.
 
 See [independent hosting and rollback](docs/HOSTING.md). Live cameras and the
-website have been verified; coding-model/MEMO checks used a mock robot and do
-not establish physical task success. The optional packet-service code is a
+website acceptance status is recorded in the shared completion harness. Actual-model checks use a mock robot and do not establish physical task success. The optional packet-service code is a
 separate entry point and is not used for this website.
 
 ## Tests
@@ -142,3 +136,21 @@ This standalone integration uses the shared BLUPE Remote Bots
 Its evidence audit distinguishes offline tests from physical execution, both
 15-second motion requirements, runner identity and retained physical replay.
 Unmet or unverified criteria block declaring the integration complete.
+
+## Method separation
+
+The default application at the AgP hostname runs **Agent as Policy only**. New
+workspaces contain no MEMO client, protocol or memory bridge. The runtime does
+not construct a skillbook or supply memory instructions; the API rejects MEMO
+requests. Explicit experience reuse remains part of AgP and is selected per run.
+
+Legacy MEMO source and records are preserved for its separate application. Only
+an explicit `--memo-site` starts that application, on its own origin and data
+directory. Never use that flag in the AgP web service. The optional packet worker
+is also a separate entry point. Isolation is covered by acceptance tests.
+
+Human visitors confirm editable name/email; returning visitors can reuse this
+browser's saved values. Operator automation opens `/?automated=1` and is labelled
+`Automated` with no personal email. Each run retains method, runner, browser
+entry/click timestamps, server arrival, and measured physical-motion evidence.
+Those timestamps do not replace the harness's timed visual verification.

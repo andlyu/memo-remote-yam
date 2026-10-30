@@ -12,8 +12,11 @@ from agp_remote_yam.workspace import Workspace
 from agp_remote_yam.runtime import AgentRuntime
 
 
-def request(app, path, method="GET", value=None, *, cookie=None, csrf=None, origin=None):
+def request(app, path, method="GET", value=None, *, cookie=None, csrf=None, origin=None, extra_headers=()):
     headers = [(b"host", b"localhost")]
+    headers.extend(extra_headers)
+    if method == "POST" and path == "/api/runs":
+        value = {"runner": {"kind": "automated", "name": "Automated"}, **(value or {})}
     if cookie: headers.append((b"cookie", cookie.encode()))
     if csrf: headers.append((b"x-csrf-token", csrf.encode()))
     if origin: headers.append((b"origin", origin.encode()))
@@ -141,7 +144,7 @@ def test_workspace_rejects_fifo_without_blocking(tmp_path):
 
 def test_memo_corrections_and_skillbook_keep_browser_ownership(tmp_path, monkeypatch):
     monkeypatch.setattr(AgentRuntime, "command", lambda _: [sys.executable, "-u", "-c", "import time; time.sleep(60)"])
-    app = App(Settings(data=tmp_path, demo=True))
+    app = App(Settings(data=tmp_path, demo=True, memo_site=True))
     _, cookie, config = request(app, "/api/config")
     _, other, other_config = request(app, "/api/config")
     try:
