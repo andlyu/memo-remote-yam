@@ -9,11 +9,13 @@ def main():
  parser.add_argument('--data',type=Path,default=Path('outputs/memo-smoke'))
  parser.add_argument('--model',default='gpt-6-astra')
  parser.add_argument('--memory-encoder',choices=('semantic','lexical'),default='semantic')
+ parser.add_argument('--agent',choices=('codex','docker','remote'),default='codex')
+ parser.add_argument('--duration',type=int,default=180)
  args=parser.parse_args()
- manager=RunManager(Settings(data=args.data,mock_robot=True,model=args.model,memory_encoder=args.memory_encoder))
+ manager=RunManager(Settings(data=args.data,mock_robot=True,model=args.model,memory_encoder=args.memory_encoder,agent_mode=args.agent))
  start=time.monotonic();owner='memo-smoke';receipts=[]
  def wait(identity):
-  deadline=time.monotonic()+210
+  deadline=time.monotonic()+args.duration+30
   while identity in manager.active and time.monotonic()<deadline:time.sleep(.15)
   if identity in manager.active:raise TimeoutError('MEMO mock smoke exceeded deadline')
   result=manager.detail(identity,owner)
@@ -30,7 +32,7 @@ def main():
         'Save a position-independent guidance memory paraphrasing the correction, and one parameterized '
         'function template using current scratch/smoke.py as evidence (no literal XYZ triplets). '
         'The template is a mock-tested/unverified hypothesis. Finish done and explicitly say no physical success was validated.')
-  identity=manager.start(task,owner,duration=180,memo=True)
+  identity=manager.start(task,owner,duration=args.duration,memo=True)
   manager.correct(identity,owner,'Lift above the bowl rim before moving laterally; do not drag the block across the rim.','smoke-correction-001')
   print(json.dumps(dict(phase='learn',run_id=identity)),flush=True);wait(identity)
   memories=manager.skillbook.list(owner)
@@ -40,7 +42,7 @@ def main():
         'explain how the bowl-rim lesson applies to this related task. Read mock state and a fresh RGB capture with '
         'depth false. Do not move the robot. Return done only if relevant prior memory was retrieved; explicitly say '
         'this verifies retrieval, not physical transfer performance.')
-  identity=manager.start(task,owner,duration=180,memo=True)
+  identity=manager.start(task,owner,duration=args.duration,memo=True)
   print(json.dumps(dict(phase='retrieve',run_id=identity)),flush=True);result=wait(identity)
   ids=[e.get('memory_ids') for e in result['events'] if e['kind']=='memory_retrieved']
   assert any(ids),ids

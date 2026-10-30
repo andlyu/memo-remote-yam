@@ -2,6 +2,11 @@
 
 ## MEMO integration — 2026-10-30
 
+- Rootless remote transport candidate: 55 offline tests passed in 9.70 s.
+  Includes fresh dependency installation and edit preservation, workspace mount
+  boundaries, framed transport, and the native environment handshake. Native
+  Codex 0.159.0 model/container verification is pending deployment testing.
+
 - Standalone regression suite: 49 passed in 9.15 s, Python 3.14.7.
 - Real Codex 0.157.0 / gpt-6-astra smoke with mock robot: PASS in 198.42 s.
   A queued owner correction became guidance and a parameterized template; a

@@ -12,7 +12,7 @@ def main():
     parser.add_argument("--api", default=Settings.origin)
     parser.add_argument("--robot-id", default="yam-1")
     parser.add_argument("--model", default="gpt-6-astra")
-    parser.add_argument("--agent", choices=("codex", "docker"), default="codex")
+    parser.add_argument("--agent", choices=("codex", "docker", "remote"), default="codex")
     parser.add_argument("--codex", default="codex")
     parser.add_argument("--demo", action="store_true", help="Mock station and scripted agent; live public cameras, no model or physical control")
     parser.add_argument("--synthetic-cameras", action="store_true", help="Explicit offline camera fixtures for tests; default cameras are the public API feeds")

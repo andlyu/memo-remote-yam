@@ -37,7 +37,7 @@ class AgentRuntime:
         self.container = "agp-" + self.directory.name
 
     def check_available(self):
-        binary = "docker" if self.mode == "docker" else self.executable
+        binary = {"docker": "docker", "remote": "podman"}.get(self.mode, self.executable)
         if self.mode != "demo" and not shutil.which(binary):
             raise RuntimeError(f"{binary} is not installed")
         if self.mode == "docker" and not os.environ.get("CODEX_API_KEY"):
@@ -51,6 +51,9 @@ class AgentRuntime:
                 "--output-last-message", "FINAL.json", "--cd", str(self.workspace), "-"]
         if self.mode == "codex":
             return [self.executable, "-a", "never", *base[:1], "--sandbox", "workspace-write", *base[1:]]
+        if self.mode == "remote":
+            return [sys.executable, "-m", "agp_remote_yam.remote_codex", "-a", "never",
+                    *base[:1], "--sandbox", "workspace-write", *base[1:]]
         base[base.index(str(self.workspace))] = "/work"
         return ["docker", "run", "--rm", "--init", "--interactive", "--name", self.container,
                 "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
@@ -133,8 +136,11 @@ class AgentRuntime:
     def _turn(self, prompt):
         env = {key: value for key, value in os.environ.items()
                if key in ("HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR", "CODEX_HOME",
-                          "CODEX_API_KEY", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS")}
+                          "CODEX_API_KEY", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS",
+                          "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS")}
         env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + os.environ.get("PATH", "")
+        if self.mode == "remote":
+            env.pop("CODEX_API_KEY", None)
         (self.workspace / "FINAL.json").unlink(missing_ok=True)
         with (self.directory / "agent.stderr.log").open("a") as errors, (self.directory / "agent.jsonl").open("a") as raw:
             with self._lock:
@@ -184,9 +190,9 @@ class AgentRuntime:
         self.stopped.set()
         with self._lock:
             process = self.process
-        if self.mode == "docker" and process is not None and process.poll() is None:
+        if self.mode in ("docker", "remote") and process is not None and process.poll() is None:
             try:
-                subprocess.run(["docker", "stop", "--time", "2", self.container],
+                subprocess.run(["podman" if self.mode == "remote" else "docker", "stop", "--time", "2", self.container],
                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8, check=False)
             except (OSError, subprocess.TimeoutExpired):
                 self.journal.add("error", "Container Stop did not complete; terminating the agent process")

@@ -25,6 +25,7 @@ Configure a shared Playground version containing `remote_yam.agent_policy_servic
 export YAM_AGENT_POLICY_ORIGIN=http://127.0.0.1:8798
 export YAM_AGENT_POLICY_TOKEN_FILE=/private/path/agp-worker-token
 export YAM_AGENT_POLICY_MODEL=gpt-6-astra
+export YAM_AGENT_POLICY_ROBOT_ID=yam-1
 ```
 
 The existing launcher then advertises **Agent as Policy** and **Agent as Policy +
@@ -33,6 +34,41 @@ Use existing task-chat steering for corrections. The MEMO panel shows the pinned
 retrieval version, retrieved IDs and saved guidance/templates. BluPe-hosted guest
 admission belongs in apps/blupe_web and must retain its existing run allowance.
 Configure only supported YAM stations; the worker checks its robot identity.
+
+## Rootless executor with an existing subscription login
+
+An operator can instead use `--agent remote` on the loopback worker. The generic
+`agp_remote_yam.codex_broker` process runs as the account already signed into
+Codex. It registers each run's rootless Podman executor as a native Codex remote
+environment. Model requests retain the normal host-side login; shell, file,
+patch and image tools execute in the container. No account credential, host
+home directory or container-engine socket is mounted in generated code.
+
+This transport pins **Codex 0.159.0** on both sides and uses its experimental
+app-server environment protocol. Test the exact version before activation.
+The worker user needs a normal rootless Podman installation and subordinate
+UID/GID range, with no Docker-group or sudo access. The separate broker accepts
+only that worker UID over a filesystem-protected Unix socket. Keep the existing
+subscription broker and its configuration separate.
+
+Server-only `/etc/agp-remote-codex.json`:
+
+```json
+{
+  "engine": "podman",
+  "image": "localhost/agp-codex:0.159.0",
+  "model": "gpt-6-astra",
+  "run_root": "/var/lib/agp-remote-yam/runs",
+  "broker_socket": "/run/agp-codex-broker/coding.sock"
+}
+```
+
+Build `Dockerfile.agent` with `--build-arg CODEX_VERSION=0.159.0` as the worker
+user. Start the broker with `python -m agp_remote_yam.codex_broker --socket ...
+--client-uid WORKER_UID --binary /path/to/codex --home /existing/login/home`.
+The broker uses that account's normal auth cache directly. Do not copy the
+cache into the worker, image or run workspace. Set `HOME`, `XDG_RUNTIME_DIR`
+and the user bus for rootless Podman in the worker service environment.
 
 ## Service protocol
 
