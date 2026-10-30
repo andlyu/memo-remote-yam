@@ -92,3 +92,18 @@ def test_template_keeps_fixed_grasp_orientation_but_rejects_xyz_pose():
     validate_template('def pick(target_pos):\n    orientation = [0, 0, 90]\n    return target_pos, orientation')
     with pytest.raises(ValueError, match='XYZ'):
         validate_template('def pick(target_pos):\n    return dict(x=-0.3, y=0.2, z=0.1)')
+
+
+@pytest.mark.parametrize('scope', ['other-owner', 'old-version', 'different-encoder'])
+def test_no_visible_memories_do_not_load_query_encoder(tmp_path, scope):
+    from types import SimpleNamespace
+    memory = book(tmp_path)
+    row = add(memory)
+    identity = memory.encoder.identity
+    def unexpected(_):
+        pytest.fail('An empty visible skillbook must not load or query the encoder')
+    memory.encoder = SimpleNamespace(identity=identity if scope != 'different-encoder' else 'unrelated-encoder',
+                                     mode='semantic', encode=unexpected)
+    owner = 'bob' if scope == 'other-owner' else 'alice'
+    version = row['version'] - 1 if scope == 'old-version' else row['version']
+    assert memory.retrieve(owner, 'PICK(block)', 'block near towel', version=version) == []

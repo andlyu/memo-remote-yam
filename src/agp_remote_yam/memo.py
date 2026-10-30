@@ -186,11 +186,14 @@ class Skillbook:
 
     def retrieve(self, namespace, action, scene="", *, version=None, limit=8):
         act, objects = action_parts(action, scene)
-        qa, qs = np.asarray(self.encoder.encode(act)), np.asarray(self.encoder.encode(objects))
         version = self.version() if version is None else version
         with self.connect() as db:
             rows = db.execute("SELECT * FROM memories WHERE namespace=? AND encoder=? AND version<=? AND (superseded IS NULL OR superseded>?)",
                               (namespace, self.encoder.identity, version, version)).fetchall()
+        # Empty owner/version/encoder scopes need no semantic model at all.
+        if not rows:
+            return []
+        qa, qs = np.asarray(self.encoder.encode(act)), np.asarray(self.encoder.encode(objects))
         matches = []
         for row in rows:
             score = .75 * float(qa @ np.asarray(json.loads(row["action_vector"]))) + .25 * float(qs @ np.asarray(json.loads(row["scene_vector"])))

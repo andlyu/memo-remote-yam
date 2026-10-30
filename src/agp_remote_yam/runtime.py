@@ -74,8 +74,10 @@ class AgentRuntime:
         self.thread.start()
 
     def _run(self, task):
+        from importlib.resources import files
         prompt = (
-            "Read README_interface.md and TASK.md. You are the robot policy throughout this run. "
+            "The authoritative interface is included below; TASK.md repeats the task. "
+            "You are the robot policy throughout this run. "
             "Inspect images and measured state; write and execute Python in scratch/ to compute geometry "
             "and choose actions. Use robot_client.py for all robot interaction. Reobserve after actions "
             "and revise your code/strategy from measured outcomes. You may reuse knowledge/ as hypotheses. "
@@ -86,18 +88,25 @@ class AgentRuntime:
             "the interface, or existing knowledge files. The goal/ directory may contain a reference image. "
             "Task: " + task
         )
+        if not self.maintenance:
+            prompt += ("\nBatch independent initial state and camera requests in one tool call where practical. "
+                       "Inspect fresh images before choosing a motion. Keep working within this turn.\n"
+                       "Authoritative robot interface:\n" + files("agp_remote_yam").joinpath("assets/INTERFACE.md").read_text())
         if self.maintenance:
             prompt = ("You are doing OFFLINE skillbook consolidation. Read MEMO.md and TASK.md. "
                       "Use memo_client.py list and consolidate. Never call robot_client.py or execute a skill. "
                       "Rewrite redundant guidance/templates without dropping motion constraints or conflicts. "
                       "Preserve the source IDs. Return done/give_up with evidence. Task: " + task)
         if self.memory is not None and not self.maintenance:
-            prompt += (" Read MEMO.md. At the beginning of each subtask call memo_client.py context "
+            prompt += (" The MEMO protocol is included below. At the beginning of each subtask call memo_client.py context "
                        "with ACTION(object) and current scene context. Inspect owner_corrections in state/frames "
-                       "responses and poll context before the next movement. End each atomic subtask with "
-                       "status continue so the host can deliver updates at the next coding turn. "
+                       "responses and poll context before the next movement. Continue observing, programming, "
+                       "acting and verifying within this coding turn; state/frames/context deliver corrections "
+                       "while you work. Do not end a turn merely after initial inspection or each subtask. "
+                       "Use status continue only when another coding turn is necessary. "
                        "Save generalized guidance and successful parameterized templates using memo_client.py "
-                       "only if MEMO is enabled. A saved memory remains agent-authored/unverified. ")
+                       "only if MEMO is enabled. A saved memory remains agent-authored/unverified. "
+                       "\nAuthoritative MEMO protocol:\n" + files("agp_remote_yam").joinpath("assets/MEMO.md").read_text())
         try:
             threading.Thread(target=self._deadline, daemon=True).start()
             previous = None

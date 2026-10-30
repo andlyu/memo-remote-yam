@@ -17,3 +17,10 @@ tests do not establish physical task success or intervention readiness.
 Run `.venv/bin/python -m pytest -q` for adapter changes. Test actual inference
 with `--mock-robot` before proposing a physical trial. Do not send a robot
 command or publish/deploy as part of offline verification.
+
+Use the shared BLUPE Remote Bots research integration harness copied into
+`docs/COMPLETION-CHECKLIST.md`. Update its evidence and review every criterion
+before final handoff. Unmet or unverified requirements remain unchecked and
+block a completion claim; mock control tests do not satisfy physical-motion or
+footage requirements. Every Run click must be checked against its 15-second
+physical-motion requirement, with any exception specifically research-grounded.

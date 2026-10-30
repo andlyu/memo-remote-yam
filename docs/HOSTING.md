@@ -67,3 +67,13 @@ establish physical task success.
 To withdraw this website, remove only its dedicated proxy site include,
 validate and reload Caddy, then stop/disable its own web unit. Keep data and
 skillbook backups. Other websites and the public robot API are independent.
+
+
+The startup repair avoids loading the semantic encoder for empty visible memory
+scopes, supplies the authoritative protocols in the initial coding context and
+keeps the observation/action loop within a coding turn. The deployment retains
+Astra medium reasoning. Fresh native-worker mock smoke tests completed and
+verified a measured relative joint change; the best observed first mock command
+completion was 24.376 seconds. This is not a physical latency pass. Use the
+[shared completion harness and audit](COMPLETION-CHECKLIST.md) for acceptance;
+physical timing, runner identity and retained replay gates remain open.

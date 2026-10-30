@@ -28,9 +28,11 @@ Do not use simulator object truth, Panda dimensions or historical coordinates.
    unrelated kinds or erase raw corrections. Consolidation changes future runs;
    the current run's retrieval snapshot stays pinned.
 
-End each atomic subtask with structured status continue and a summary. The host
-starts a fresh coding turn with current memory and correction context. Use done
-only after fresh visual verification of the whole task; otherwise give_up.
-The same workspace retains your programs, observations and notes between turns.
+Continue observing, programming, acting and checking within the same coding turn.
+Poll context before each movement; state/frames/context return owner corrections
+while this turn is active. Do not restart merely after inspection or each atomic
+subtask. Return status continue only when another coding turn is necessary. Use
+done only after fresh visual verification of the whole task; otherwise give_up.
+The workspace retains your programs, observations and notes between turns.
 With MEMO off, corrections still reach this run, but no skillbook is reused or
 updated. All durable memory is scoped to this browser/hosted visitor.

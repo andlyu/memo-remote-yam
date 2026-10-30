@@ -134,3 +134,11 @@ to check container IPC with a scripted agent and no model credential.
 
 Upstream client attribution and licenses are in [NOTICE](NOTICE). This
 integration is independently maintained; upstream authors have not endorsed it.
+
+## Integration completion harness
+
+This standalone integration uses the shared BLUPE Remote Bots
+[research integration completion checklist](docs/COMPLETION-CHECKLIST.md).
+Its evidence audit distinguishes offline tests from physical execution, both
+15-second motion requirements, runner identity and retained physical replay.
+Unmet or unverified criteria block declaring the integration complete.
