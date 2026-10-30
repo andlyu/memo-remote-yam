@@ -1,5 +1,10 @@
 # Agent as Policy on Remote YAM
 
+Now includes **MEMO**: retrieve prior corrections, learn parameterized skills
+and consolidate the versioned skillbook. The standalone website has learning
+selection, live corrections and a skillbook viewer. See [MEMO](docs/MEMO.md) and
+the [BluPe Playground integration](docs/PLAYGROUND.md).
+
 A standalone website that runs a coding agent against the public Remote YAM
 API. Give it a task and an optional goal image. The agent observes cameras and
 measured state, writes and executes Python, sends a robot command, checks the

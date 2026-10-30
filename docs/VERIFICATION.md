@@ -1,5 +1,29 @@
 # Verification — 2026-10-24
 
+## MEMO integration — 2026-10-30
+
+- Standalone regression suite: 48 passed in 9.12 s, Python 3.14.7.
+- Real Codex 0.157.0 / gpt-6-astra smoke with mock robot: PASS in 198.42 s.
+  A queued owner correction became guidance and a parameterized template; a
+  second coding-agent run retrieved prior memory for a related task. This smoke
+  explicitly used the lexical fixture encoder. No physical session was created.
+- Semantic MiniLM encoder at revision 1110a243: PASS. PICK(cube)/wood block near
+  a dish ranked the prior PICK(block)/bowl lesson at 0.9324 similarity. Initial
+  setup plus fixture execution took 45.28 s. This is a retrieval fixture, not
+  manipulation or physical transfer evidence.
+- Packet-service integration: PASS. One host-created session, one worker
+  creation and one mock packet; 1.36 s. The service never held a robot-session
+  credential or opened a second robot session.
+- Browser integration: PASS on localhost. The shared model picker offered both
+  modes; an owner correction received a delivery receipt; the MEMO panel showed
+  a learned guidance entry. This browser test used an explicitly scripted mock
+  fixture and synthetic/unavailable preview video, not a physical robot.
+- Public physical execution, container model authentication and production
+  activation remain UNVERIFIED. The current web host has no Docker executable;
+  do not treat the local coding-agent smoke as public worker isolation evidence.
+
+Earlier baseline results and camera verification follow below.
+
 Environment: macOS arm64, Python 3.14.7, Codex CLI 0.157.0,
 Remote YAM fb1aaa9a696ae4597d06aef41bf876bf2ec90e4d,
 AgP client 54dd96ed97c013950816bb674cbc38a68ec19b51.

@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agp-remote-yam"
-version = "0.1.0"
+version = "0.2.0"
 description = "Agent as Policy on the public Remote YAM API"
 requires-python = ">=3.11"
 dependencies = ["numpy>=1.26", "scipy>=1.16", "pillow==12.1.1", "opencv-python-headless>=4.10", "mujoco==3.12.0", "websocket-client==1.9.0", "uvicorn==0.52.4"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
+memo = ["sentence-transformers>=3,<6"]
 
 [project.scripts]
 agp-remote-yam = "agp_remote_yam.__main__:main"

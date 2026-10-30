@@ -1,6 +1,6 @@
 "use strict";
 const $ = id => document.getElementById(id);
-let config, selected = null, cursor = -1, rows = [], polling = false, fileListKey = "", terminalHistoryKey = "";
+let config, selected = null, cursor = -1, rows = [], polling = false, fileListKey = "", terminalHistoryKey = "", pendingCorrection = null;
 const terminal = new Set(["stopped", "timed_out", "failed", "disconnected", "safety_aborted", "interrupted", "resetting"]);
 async function api(path, value) {
   const response = await fetch(path, value === undefined ? {} : {method:"POST", headers:{"Content-Type":"application/json", "X-CSRF-Token":config.csrf}, body:JSON.stringify(value)});
@@ -37,24 +37,43 @@ async function poll() {
     const identity=selected, run=await api("/api/runs/"+identity+"?after="+cursor);
     if(identity!==selected)return;
     $("phase").textContent=run.status.replaceAll("_"," ");$("run-title").textContent=run.task;
-    const finished=terminal.has(run.status);$("run").disabled=!finished;$("stop").disabled=finished;
+    const finished=terminal.has(run.status);
+    $("correction").disabled=finished;$("send-correction").disabled=finished;
+    const latest=run.corrections?.at(-1);
+    $("correction-state").textContent=latest?(latest.delivered?"Latest correction delivered in the agent observation.":finished?"Run ended before the latest correction was delivered.":"Correction queued for the next observation or coding turn."):finished?"This run has ended. Start a new task to send a correction.":"Corrections guide the next decision. Use Stop to halt motion.";
+    if(run.memo_enabled)$("memory-scope").textContent="This run retrieves skillbook version "+run.memory_version+". New lessons are available to later runs. Skills are agent-authored and unverified.";
+$("run").disabled=!finished;$("stop").disabled=finished;
     const nearBottom=$("events").scrollTop+$("events").clientHeight>=$("events").scrollHeight-60;
     for(const event of run.events){rows.push(event);$("events").append(eventRow(event));cursor=event.id;}
     if(nearBottom)$("events").scrollTop=$("events").scrollHeight;
     $("event-count").textContent=rows.length+" events";renderFiles(run.files);
     if(run.error)error(run.error);
     if(run.outcome){$("outcome").replaceChildren();const message=document.createElement("div"),scope=document.createElement("small");message.textContent=run.outcome.summary;scope.textContent=config.mode==="offline_mock"?(config.agent==="scripted"?"Mock transport verification only. No model inference or physical robot.":"Real model, mock robot. No physical task validation."):"Agent-declared outcome. Review captures and evidence before judging task success.";$("outcome").append(message,scope);$("outcome").hidden=false;}
-    const historyKey=selected+run.status;if(finished&&terminalHistoryKey!==historyKey){terminalHistoryKey=historyKey;await history();}
+    const historyKey=selected+run.status;if(finished&&terminalHistoryKey!==historyKey){terminalHistoryKey=historyKey;await history();await memory();}
   } catch(exc){error(exc.message);}finally{polling=false;}
 }
 $("task-form").addEventListener("submit",async event=>{
   event.preventDefault();error("");$("run").disabled=true;
   try{let goal=null;const file=$("goal").files[0];if(file)goal=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
-    const run=await api("/api/runs",{task:$("task").value,duration_s:Number($("duration").value),experience_run:$("experience").value||null,goal_image:goal});clearRun(run.id);await history();await poll();
+    const run=await api("/api/runs",{task:$("task").value,duration_s:Number($("duration").value),experience_run:$("experience").value||null,goal_image:goal,memo:$("memo-mode").value==="on"});clearRun(run.id);await history();await poll();
   }catch(exc){error(exc.message);$("run").disabled=false;}
 });
 $("stop").onclick=async()=>{if(!selected)return;$("stop").disabled=true;try{await api("/api/runs/"+selected+"/stop",{});await poll();}catch(exc){error(exc.message);}};
 $("refresh").onclick=()=>history().catch(exc=>error(exc.message));
 $("goal").onchange=()=>{const file=$("goal").files[0];$("goal-preview").hidden=!file;if(file)$("goal-preview").src=URL.createObjectURL(file);};
-async function init(){try{config=await api("/api/config");$("mode").textContent=config.camera_source==="synthetic"?"Synthetic cameras":config.mode==="offline_mock"?"Live cameras · mock robot":"Live cameras · API robot";$("mode").classList.toggle("mock",config.mode==="offline_mock");$("robot").textContent=config.robot_id;$("model").textContent=config.agent==="scripted"?"Scripted agent · no model usage":config.model+" · Agent as Policy";if(config.mode==="offline_mock")$("task").value="Demonstrate the offline agent → API controller loop.";await history();setInterval(poll,800);AgPCameras.start(config);}catch(exc){error(exc.message);}}
+async function init(){try{config=await api("/api/config");$("mode").textContent=config.camera_source==="synthetic"?"Synthetic cameras":config.mode==="offline_mock"?"Live cameras · mock robot":"Live cameras · API robot";$("mode").classList.toggle("mock",config.mode==="offline_mock");$("robot").textContent=config.robot_id;$("model").textContent=config.agent==="scripted"?"Scripted agent · no model usage":config.model+" · Agent as Policy";if(config.mode==="offline_mock")$("task").value="Demonstrate the offline agent → API controller loop.";await history();await memory();setInterval(poll,800);AgPCameras.start(config);}catch(exc){error(exc.message);}}
+async function memory(){
+  const data=await api("/api/memories");$("memory-version").textContent="v"+data.version+" · "+data.memories.length+" entries";
+  const fragment=document.createDocumentFragment();
+  for(const row of data.memories){const item=document.createElement("details"),title=document.createElement("summary"),pre=document.createElement("pre"),note=document.createElement("p");title.textContent=row.action+" · "+row.kind+" · v"+row.version;pre.textContent=row.content;note.textContent="Agent-authored, unverified · "+row.encoder;item.append(title,note,pre);fragment.append(item);}
+  if(!data.memories.length){const p=document.createElement("p");p.textContent="No learned skills yet. Run with MEMO and provide a correction to build your skillbook.";fragment.append(p);}
+  $("memories").replaceChildren(fragment);
+}
+$("correction-form").addEventListener("submit",async event=>{
+  event.preventDefault();if(!selected)return;error("");$("send-correction").disabled=true;
+  const content=$("correction").value.trim();
+  if(!pendingCorrection||pendingCorrection.text!==content||pendingCorrection.run!==selected)pendingCorrection={text:content,request_id:crypto.randomUUID(),run:selected};
+  try{await api("/api/runs/"+selected+"/corrections",pendingCorrection);$("correction").value="";pendingCorrection=null;await poll();}
+  catch(exc){error(exc.message);}finally{$("send-correction").disabled=$("correction").disabled;}
+});
 init();

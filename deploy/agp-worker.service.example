@@ -1,0 +1,17 @@
+[Unit]
+Description=Agent as Policy and MEMO packet worker
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=agp
+WorkingDirectory=/opt/agp-remote-yam
+EnvironmentFile=/etc/agp-remote-yam.env
+ExecStart=/opt/agp-remote-yam/.venv/bin/python -m agp_remote_yam --worker --port 8798 --service-token-file /etc/agp-worker-token --agent docker --data /var/lib/agp-remote-yam
+Restart=on-failure
+UMask=0077
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target

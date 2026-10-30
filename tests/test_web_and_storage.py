@@ -137,3 +137,24 @@ def test_workspace_rejects_fifo_without_blocking(tmp_path):
     with pytest.raises(ValueError, match="regular file"):
         Workspace(tmp_path).read("trap.json")
     assert time.monotonic() - started < 1
+
+
+def test_memo_corrections_and_skillbook_keep_browser_ownership(tmp_path, monkeypatch):
+    monkeypatch.setattr(AgentRuntime, "command", lambda _: [sys.executable, "-u", "-c", "import time; time.sleep(60)"])
+    app = App(Settings(data=tmp_path, demo=True))
+    _, cookie, config = request(app, "/api/config")
+    _, other, other_config = request(app, "/api/config")
+    try:
+        status, _, run = request(app, "/api/runs", "POST", {"task":"MEMO owner test","duration_s":60,"memo":True}, cookie=cookie, csrf=config['csrf'])
+        assert status == 202
+        path = "/api/runs/" + run['id'] + "/corrections"
+        value = dict(text="Clear the rim first", request_id="owner-correction-test")
+        assert request(app, path, "POST", value, cookie=other, csrf=other_config['csrf'])[0] == 403
+        assert request(app, path, "POST", value, cookie=cookie)[0] == 403
+        assert request(app, path, "POST", value, cookie=cookie, csrf=config['csrf'])[0] == 202
+        context = app.manager.active[run['id']]
+        context['memory'].command('remember', dict(content='Clear the rim before translating laterally.'))
+        assert len(request(app, '/api/memories', cookie=cookie)[2]['memories']) == 1
+        assert request(app, '/api/memories', cookie=other)[2]['memories'] == []
+    finally:
+        app.manager.close()

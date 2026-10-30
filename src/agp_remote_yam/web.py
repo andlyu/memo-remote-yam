@@ -140,6 +140,9 @@ class App:
             rows = [{k: v for k, v in row.items() if k != "owner"}
                     for row in self.manager.store.list() if row.get("owner") == owner]
             return 200, "application/json", dict(runs=rows)
+        if path == "/api/memories" and method == "GET":
+            return 200, "application/json", dict(version=self.manager.skillbook.version(),
+                encoder=self.manager.skillbook.encoder.identity, memories=self.manager.skillbook.list(owner))
         if path == "/api/runs" and method == "POST":
             value = json.loads(body)
             goal = None
@@ -156,7 +159,8 @@ class App:
                 image.convert("RGB").save(target, "PNG")
                 goal = target.getvalue()
             identity = self.manager.start(value.get("task"), owner, duration=value.get("duration_s", 300),
-                parent=value.get("experience_run") or None, goal=goal)
+                parent=value.get("experience_run") or None, goal=goal, memo=value.get("memo", False),
+                memory_version=value.get("memory_version"))
             return 202, "application/json", dict(id=identity)
         if path.startswith("/api/runs/"):
             parts = path.split("/")
@@ -167,6 +171,10 @@ class App:
             if len(parts) == 5 and parts[4] == "stop" and method == "POST":
                 self.manager.stop(identity, owner)
                 return 200, "application/json", {"status": "stop_requested"}
+            if len(parts) == 5 and parts[4] == "corrections" and method == "POST":
+                value = json.loads(body)
+                row = self.manager.correct(identity, owner, value.get("text"), value.get("request_id"))
+                return 202, "application/json", {"correction": {k:v for k,v in row.items() if k != "namespace"}}
             if len(parts) > 5 and parts[4] == "files" and method == "GET":
                 directory = self.manager.owned(identity, owner)
                 relative = unquote("/".join(parts[5:]))

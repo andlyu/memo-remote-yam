@@ -11,10 +11,11 @@ from .workspace import Workspace
 
 
 class FileBridge:
-    def __init__(self, workspace, backend, journal, stopped):
+    def __init__(self, workspace, backend, journal, stopped, memory=None):
         self.workspace = Workspace(workspace)
         self.backend, self.journal, self.stopped = backend, journal, stopped
         self.thread = None
+        self.memory = memory
 
     def start(self):
         self.thread = threading.Thread(target=self.run, name="agp-file-bridge", daemon=True)
@@ -24,7 +25,10 @@ class FileBridge:
         consumed = set()
         while not self.stopped.is_set():
             progressed = False
-            for arm, folder in (("left", "bridge"), ("right", "bridge_right")):
+            channels = [("left", "bridge"), ("right", "bridge_right")]
+            if self.memory is not None:
+                channels.append(("memo", "bridge_memo"))
+            for arm, folder in channels:
                 try:
                     names = sorted(self.workspace.list(folder))
                 except OSError:
@@ -49,7 +53,12 @@ class FileBridge:
                         if not isinstance(command, str) or not isinstance(arguments, dict):
                             raise ValueError("Invalid AgP command")
                         self.journal.add("tool_call", command, arm=arm, arguments=arguments)
-                        result = self.backend.command(arm, command, arguments)
+                        if arm == "memo":
+                            result = self.memory.command(command, arguments)
+                        else:
+                            result = self.backend.command(arm, command, arguments)
+                            if self.memory is not None and command in ("state", "frames"):
+                                result["owner_corrections"] = self.memory.updates(deliver=True)
                         response = dict(ok=True, **result)
                     except Exception as exc:
                         response = dict(ok=False, error_code=getattr(exc, "code", type(exc).__name__),

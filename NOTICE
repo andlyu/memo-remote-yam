@@ -7,3 +7,11 @@ License: Apache-2.0, retained in licenses/AGP-APACHE-2.0.txt.
 Remote YAM is an external pinned dependency, not vendored project source.
 Its original license and notices remain in its separately installed checkout.
 This adaptation does not claim to reproduce the paper's success rates or timed throwing.
+
+MEMO method reference: https://collab.me.vt.edu/memo/
+VT-Collab/memo revision d98cc8db145f429c8833a846d357395c935ddd3c.
+The skillbook, service and adapters here are independently implemented. No
+MEMO source code or upstream serialized skillbook is redistributed.
+Semantic embeddings use sentence-transformers/all-MiniLM-L6-v2 at the revision
+recorded in dependency.lock.json; model weights are fetched separately under
+their upstream license, not committed to this repository.

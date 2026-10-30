@@ -21,6 +21,7 @@ class Settings:
     mock_robot: bool = False
     camera_source: str = "api"
     codex: str = "codex"
+    memory_encoder: str = "lexical"
 
     @property
     def offline(self):
@@ -32,6 +33,8 @@ class RunManager:
         runner_root()
         self.settings = settings
         self.store = RunStore(Path(settings.data) / "runs")
+        from .memo import Skillbook
+        self.skillbook = Skillbook(Path(settings.data) / "skillbook.sqlite3", settings.memory_encoder)
         self.lock = threading.RLock()
         self.active = {}
         # A server restart never resumes a lease or replays motion automatically.
@@ -47,11 +50,17 @@ class RunManager:
             raise PermissionError("This run belongs to another browser session")
         return directory
 
-    def start(self, task, owner, *, duration=300, parent=None, goal=None):
+    def start(self, task, owner, *, duration=300, parent=None, goal=None, memo=False, memory_version=None):
         if not isinstance(task, str) or not 1 <= len(task.strip()) <= 4000:
             raise ValueError("Enter a task of 1–4,000 characters")
         if type(duration) is not int or not 60 <= duration <= 600:
             raise ValueError("Run duration must be 60–600 seconds")
+        if type(memo) is not bool:
+            raise ValueError("MEMO must be on or off")
+        if parent:
+            self.owned(parent, owner)
+        if memory_version is not None and (type(memory_version) is not int or not 0 <= memory_version <= self.skillbook.version()):
+            raise ValueError("Invalid memory version")
         with self.lock:
             if any(value["owner"] == owner for value in self.active.values()):
                 raise ValueError("This browser already has an active run")
@@ -62,8 +71,11 @@ class RunManager:
             runtime = AgentRuntime(directory, journal, model=self.settings.model,
                 mode="demo" if self.settings.demo else self.settings.agent_mode,
                 timeout_s=duration, executable=self.settings.codex)
+            from .memo import MemoryChannel
+            memory = MemoryChannel(self.skillbook, owner, directory, journal, enabled=memo, version=memory_version)
+            runtime.memory = memory
             self.store.update(directory, owner=owner, mode="offline_mock" if self.settings.offline else "physical_api",
-                              duration_s=duration)
+                              duration_s=duration, memo_enabled=memo, memory_version=memory.version)
             try:
                 runtime.check_available()
             except Exception as exc:
@@ -72,7 +84,7 @@ class RunManager:
             if goal:
                 (directory / "workspace/goal/reference.png").write_bytes(goal)
             context = dict(owner=owner, runtime=runtime, journal=journal, directory=directory,
-                           controller=None, stopped=threading.Event())
+                           controller=None, stopped=threading.Event(), memory=memory)
             self.active[metadata["id"]] = context
             threading.Thread(target=self._run, args=(context, task.strip(), duration),
                              name="agp-run-" + metadata["id"][:8], daemon=True).start()
@@ -148,6 +160,14 @@ class RunManager:
             finally:
                 context["runtime"].cancel()
 
+    def correct(self, identity, owner, content, request_id):
+        self.owned(identity, owner)
+        with self.lock:
+            context = self.active.get(identity)
+            if not context or context["stopped"].is_set() or context["runtime"].finished.is_set():
+                raise ValueError("Select a running task to send a correction")
+            return context["memory"].correct(content, request_id)
+
     def detail(self, identity, owner, cursor=-1):
         directory = self.owned(identity, owner)
         value = json.loads((directory / "run.json").read_text())
@@ -161,6 +181,7 @@ class RunManager:
             rows = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
             events = rows[max(0, cursor + 1):]
         value["events"] = events
+        value["corrections"] = self.skillbook.corrections(owner, identity)
         value["files"] = sorted([str(path.relative_to(directory / "workspace"))
                           for path in (directory / "workspace").rglob("*")
                           if path.is_file() and not path.is_symlink() and path.suffix in (".png", ".py", ".md", ".json", ".npy", ".npz")])

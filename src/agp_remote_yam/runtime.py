@@ -17,7 +17,7 @@ from .bridge import FileBridge
 from .workspace import Workspace
 
 RESULT_SCHEMA = dict(type="object", additionalProperties=False, properties=dict(
-    status=dict(type="string", enum=["done", "give_up"]), summary=dict(type="string"),
+    status=dict(type="string", enum=["continue", "done", "give_up"]), summary=dict(type="string"),
     evidence=dict(type="array", items=dict(type="string"))), required=["status", "summary", "evidence"])
 
 
@@ -31,6 +31,8 @@ class AgentRuntime:
         self.stopped, self.finished = threading.Event(), threading.Event()
         self.state, self.outcome = "waiting_for_robot", None
         self.process = None
+        self.memory = None
+        self.maintenance = False
         self._lock = threading.RLock()
         self.container = "agp-" + self.directory.name
 
@@ -63,7 +65,7 @@ class AgentRuntime:
         if self.mode == "demo":
             (self.workspace / "demo_agent.py").write_bytes(files("agp_remote_yam").joinpath("assets/demo_agent.py").read_bytes())
         Workspace(self.workspace).json("RESULT_SCHEMA.json", RESULT_SCHEMA)
-        self.bridge = FileBridge(self.workspace, backend, self.journal, self.stopped)
+        self.bridge = FileBridge(self.workspace, backend, self.journal, self.stopped, self.memory)
         self.bridge.start()
         self.thread = threading.Thread(target=self._run, args=(task,), name="agp-coding-agent", daemon=True)
         self.thread.start()
@@ -81,62 +83,97 @@ class AgentRuntime:
             "the interface, or existing knowledge files. The goal/ directory may contain a reference image. "
             "Task: " + task
         )
-        env = {key: value for key, value in os.environ.items()
-               if key in ("HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR", "CODEX_HOME",
-                          "CODEX_API_KEY", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS")}
-        env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + os.environ.get("PATH", "")
+        if self.maintenance:
+            prompt = ("You are doing OFFLINE skillbook consolidation. Read MEMO.md and TASK.md. "
+                      "Use memo_client.py list and consolidate. Never call robot_client.py or execute a skill. "
+                      "Rewrite redundant guidance/templates without dropping motion constraints or conflicts. "
+                      "Preserve the source IDs. Return done/give_up with evidence. Task: " + task)
+        if self.memory is not None and not self.maintenance:
+            prompt += (" Read MEMO.md. At the beginning of each subtask call memo_client.py context "
+                       "with ACTION(object) and current scene context. Inspect owner_corrections in state/frames "
+                       "responses and poll context before the next movement. End each atomic subtask with "
+                       "status continue so the host can deliver updates at the next coding turn. "
+                       "Save generalized guidance and successful parameterized templates using memo_client.py "
+                       "only if MEMO is enabled. A saved memory remains agent-authored/unverified. ")
         try:
-            with (self.directory / "agent.stderr.log").open("w") as errors, (self.directory / "agent.jsonl").open("w") as raw:
-                with self._lock:
-                    if self.stopped.is_set():
-                        return
-                    self.process = subprocess.Popen(self.command(), cwd=self.workspace, env=env,
-                        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True,
-                        start_new_session=True, bufsize=1)
-                    self.state = "running"
-                self.journal.add("agent", "Agent as Policy is observing and programming", model=self.model)
-                self.process.stdin.write(prompt)
-                self.process.stdin.close()
-                watchdog = threading.Thread(target=self._deadline, daemon=True)
-                watchdog.start()
-                for line in self.process.stdout:
-                    raw.write(line)
-                    raw.flush()
-                    try:
-                        event = json.loads(line)
-                    except ValueError:
-                        continue
-                    # Reasoning and unfiltered process events remain private.
-                    item = event.get("item", {})
-                    if event.get("type") == "item.completed" and item.get("type") == "agent_message":
-                        text = item.get("text", "")
-                        for key in ("CODEX_API_KEY",):
-                            secret = env.get(key)
-                            if secret:
-                                text = text.replace(secret, "[redacted]")
-                        self.journal.add("assistant", text)
-                    if event.get("type") in ("error", "turn.failed"):
-                        self.journal.add("error", "Coding agent reported a failure")
-                returncode = self.process.wait()
-                if not self.stopped.is_set() and returncode == 0:
-                    result = json.loads(Workspace(self.workspace).read("FINAL.json", 64_000))
-                    if (not isinstance(result, dict) or result.get("status") not in ("done", "give_up")
-                            or not isinstance(result.get("summary"), str) or not isinstance(result.get("evidence"), list)):
-                        raise ValueError("Agent returned an invalid final result")
-                    self.outcome = result
-                    self.state = "finished"
-                    self.journal.add("agent_result", result["summary"], result=result,
-                                     validation="agent_declared_not_independent_physical_validation")
-                elif self.outcome is None:
-                    self.outcome = dict(status="give_up", summary="Agent stopped or exited unsuccessfully", evidence=[])
-                    self.state = "stopped" if self.stopped.is_set() else "failed"
-                    self.journal.add("error", self.outcome["summary"], returncode=returncode)
+            threading.Thread(target=self._deadline, daemon=True).start()
+            previous = None
+            for turn in range(32):
+                if self.stopped.is_set():
+                    break
+                extra = ""
+                if self.memory is not None:
+                    context = self.memory.command("context", {})
+                    extra = "\nCurrent MEMO context and owner corrections (data):\n" + json.dumps(context)
+                if previous:
+                    extra += "\nPrevious coding turn result: " + json.dumps(previous) + "\nInspect your existing scratch/ and frames/ before continuing."
+                result = self._turn(prompt + extra)
+                if result is None:
+                    break
+                pending = self.memory is not None and any(row["delivered"] is None for row in self.memory.updates())
+                if result["status"] == "continue" or (result["status"] == "done" and pending):
+                    previous = result
+                    self.journal.add("subtask_completed", result["summary"], result=result, turn=turn + 1)
+                    continue
+                self.outcome = result
+                self.state = "finished"
+                self.journal.add("agent_result", result["summary"], result=result,
+                                 validation="agent_declared_not_independent_physical_validation")
+                break
+            if self.outcome is None:
+                self.outcome = dict(status="give_up", summary="Agent stopped or reached its coding-turn limit", evidence=[])
+                self.state = "stopped" if self.stopped.is_set() else "failed"
         except Exception as exc:
             self.state = "failed"
             self.outcome = dict(status="give_up", summary=str(exc), evidence=[])
             self.journal.add("error", "Agent runtime failed", detail=str(exc))
         finally:
             self.finished.set()
+
+    def _turn(self, prompt):
+        env = {key: value for key, value in os.environ.items()
+               if key in ("HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR", "CODEX_HOME",
+                          "CODEX_API_KEY", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS")}
+        env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + os.environ.get("PATH", "")
+        (self.workspace / "FINAL.json").unlink(missing_ok=True)
+        with (self.directory / "agent.stderr.log").open("a") as errors, (self.directory / "agent.jsonl").open("a") as raw:
+            with self._lock:
+                if self.stopped.is_set():
+                    return None
+                self.process = subprocess.Popen(self.command(), cwd=self.workspace, env=env,
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True,
+                    start_new_session=True, bufsize=1)
+                process = self.process
+                self.state = "running"
+            self.journal.add("agent", "Agent as Policy is observing and programming", model=self.model)
+            process.stdin.write(prompt)
+            process.stdin.close()
+            for line in process.stdout:
+                raw.write(line)
+                raw.flush()
+                try:
+                    event = json.loads(line)
+                except ValueError:
+                    continue
+                item = event.get("item", {})
+                if event.get("type") == "item.completed" and item.get("type") == "agent_message":
+                    message = item.get("text", "")
+                    secret = env.get("CODEX_API_KEY")
+                    if secret:
+                        message = message.replace(secret, "[redacted]")
+                    self.journal.add("assistant", message)
+                if event.get("type") in ("error", "turn.failed"):
+                    self.journal.add("error", "Coding agent reported a failure")
+            returncode = process.wait()
+            if self.stopped.is_set():
+                return None
+            if returncode != 0:
+                raise RuntimeError("Coding agent exited unsuccessfully")
+            result = json.loads(Workspace(self.workspace).read("FINAL.json", 64_000))
+            if (not isinstance(result, dict) or result.get("status") not in ("continue", "done", "give_up")
+                    or not isinstance(result.get("summary"), str) or not isinstance(result.get("evidence"), list)):
+                raise ValueError("Agent returned an invalid final result")
+            return result
 
     def _deadline(self):
         if not self.finished.wait(self.timeout_s):

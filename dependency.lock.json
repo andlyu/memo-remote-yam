@@ -1,5 +1,20 @@
 {
-  "remote_yam": {"repository": "https://github.com/andlyu/blupe-remote-yam.git", "commit": "fb1aaa9a696ae4597d06aef41bf876bf2ec90e4d"},
-  "agent_as_policy_reference": {"repository": "https://github.com/agent-as-policy-2026/agent-as-policy", "commit": "54dd96ed97c013950816bb674cbc38a68ec19b51"},
-  "codex_cli_tested": "0.157.0"
+  "remote_yam": {
+    "repository": "https://github.com/andlyu/blupe-remote-yam.git",
+    "commit": "fb1aaa9a696ae4597d06aef41bf876bf2ec90e4d"
+  },
+  "agent_as_policy_reference": {
+    "repository": "https://github.com/agent-as-policy-2026/agent-as-policy",
+    "commit": "54dd96ed97c013950816bb674cbc38a68ec19b51"
+  },
+  "codex_cli_tested": "0.157.0",
+  "memo_reference": {
+    "repository": "https://github.com/VT-Collab/memo",
+    "commit": "d98cc8db145f429c8833a846d357395c935ddd3c",
+    "usage": "method reference; independent implementation, no upstream source vendored"
+  },
+  "memo_embedding": {
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+  }
 }
