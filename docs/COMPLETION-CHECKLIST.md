@@ -273,3 +273,7 @@ No visibility exception or research-based timing exemption is asserted.
 Remaining: both15-second physical-motion targets, with no research-grounded
 exemption; the all-gates completion box therefore remains unchecked. A usable
 physical AgP integration and passing software tests do not erase those misses.
+
+- Legacy method isolation: old MEMO/unknown-method records are rejected by AgP detail, file/replay and experience-seeding ownership checks, while preserved on disk for their separate application. This prevents direct legacy links from mislabelling a MEMO run as AgP.
+
+- Final full adapter suite:77 passed in14.24 s, including strict legacy-method isolation, identity, Stop ownership, real-client protocol, calibrated geometry and replay access/ranges.

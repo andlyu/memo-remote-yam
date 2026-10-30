@@ -81,7 +81,7 @@ def test_replay_is_owned_seekable_and_available_only_when_ready(tmp_path):
     visitor = cookie.split('=',1)[1]
     _, owner, _ = app.identity({'cookie':cookie})
     meta, directory = app.manager.store.create('Replay access fixture')
-    app.manager.store.update(directory, owner=owner)
+    app.manager.store.update(directory, owner=owner, approach='Agent as Policy')
     root = directory/'recording'; root.mkdir()
     data = b'fixture bytes for testing access and ranges; not a physical video'
     (root/'physical.mp4').write_bytes(data)
@@ -130,3 +130,18 @@ def test_selected_station_controls_camera_and_readiness_contract(tmp_path, monke
     assert request(app,'/api/config?robot_id=unconfigured')[0]==400
     _, cookie, csrf=request(app,'/api/config')
     assert request(app,'/api/runs','POST',dict(task='Rejected station',robot_id='unconfigured'),cookie=cookie,csrf=csrf['csrf'])[0]==400
+
+
+def test_legacy_memo_cannot_be_relabelled_or_seed_a_pure_agp_run(tmp_path):
+    app=App(Settings(data=tmp_path,demo=True))
+    _,cookie,config=request(app,'/api/config')
+    _,owner,_=app.identity({'cookie':cookie})
+    meta,directory=app.manager.store.create('Preserved legacy MEMO',with_memo=True)
+    app.manager.store.update(directory,owner=owner,approach='Agent as Policy + MEMO',memo_enabled=True,status='stopped')
+    path='/api/runs/'+meta['id']
+    assert request(app,'/api/runs',cookie=cookie)[2]['runs']==[]
+    assert request(app,path,cookie=cookie)[0]==404
+    assert request(app,path+'/files/MEMO.md',cookie=cookie)[0]==404
+    assert request(app,'/api/runs','POST',dict(task='Rejected legacy seed',experience_run=meta['id']),cookie=cookie,csrf=config['csrf'])[0]==404
+    assert len(app.manager.store.list())==1
+    assert (directory/'workspace/MEMO.md').is_file()

@@ -55,6 +55,8 @@ class RunManager:
         metadata = json.loads((directory / "run.json").read_text())
         if metadata.get("owner") != owner:
             raise PermissionError("This run belongs to another browser session")
+        if not self.settings.memo_site and (metadata.get("approach") != APPROACH or metadata.get("memo_enabled")):
+            raise FileNotFoundError("This record belongs to the separate legacy application")
         return directory
 
     def start(self, task, owner, *, duration=300, parent=None, goal=None, memo=False, memory_version=None,
