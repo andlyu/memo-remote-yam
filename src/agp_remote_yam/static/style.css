@@ -13,3 +13,5 @@ label[for="memo-mode"]{margin-top:16px}.camera-label,.panel-heading span,.event-
 .sidebar-foot,.muted,.panel-heading span,.empty p{color:var(--muted)}.badge.quiet{color:#526158}.section-label,.sidebar-foot,.station small,.badge,.header-right,.file,.history-item strong,details,summary{font-size:12px}.empty p,.event p,.optional,.history-item small,.camera-status,.camera-label,.event-label,label,select,.stop{font-size:12px}.camera-label{letter-spacing:.5px}.panel-heading span{font-size:12px}.history-item{min-height:48px}@media(max-width:650px){.history{display:block}}
 
 #robot-select{margin-bottom:20px}
+
+.task-options{margin-top:0}.task-options summary{padding:0 0 14px;cursor:pointer;color:var(--ink)}aside{padding-top:24px}h1{margin:10px 0 14px}.intro{margin-bottom:22px}textarea{min-height:100px}.task-options .form-row{margin-bottom:10px}
