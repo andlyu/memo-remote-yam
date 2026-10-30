@@ -24,6 +24,9 @@ def test_native_environment_handshake_and_result(tmp_path):
     binary=tmp_path/'codex-fixture'
     binary.write_text('#!'+sys.executable+'\n'+'''
 import json,sys
+assert 'features.shell_tool=true' in sys.argv
+assert 'features.unified_exec=true' in sys.argv
+assert 'mcp_servers={}' in sys.argv
 def emit(value):print(json.dumps(value),flush=True)
 for line in sys.stdin:
  v=json.loads(line)
