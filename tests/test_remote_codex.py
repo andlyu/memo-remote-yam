@@ -39,3 +39,8 @@ def test_executor_mounts_only_this_workspace_and_ephemeral_capability(tmp_path,m
     assert mounts==[str(workspace)+':/work:rw',str(workspace.parent/'executor.token')+':/executor.token:ro']
     assert '--userns=keep-id' in run and '--cap-drop=ALL' in run and '--read-only' in run
     assert not any('auth.json' in v or 'CODEX_API_KEY' in v or 'docker.sock' in v for v in run)
+    cleanup=[]
+    monkeypatch.setattr('agp_remote_yam.remote_codex.subprocess.run',lambda command,**kw:cleanup.append(command))
+    executor.close()
+    assert cleanup==[['podman','rm','--force',executor.name]]
+    assert not executor.token_path.exists()

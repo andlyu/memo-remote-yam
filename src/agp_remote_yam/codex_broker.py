@@ -85,7 +85,9 @@ def execute(sock, value, *, binary, home, timeout=610):
               'mcp_servers={}', 'notify=[]', 'model_reasoning_effort="high"',
               'features.shell_tool=true', 'features.unified_exec=true',
               'features.apply_patch_freeform=true', 'features.view_image=true',
-              'features.shell_snapshot=false', 'features.shell_snapshot_v2=false']
+              'features.shell_snapshot=false', 'features.shell_snapshot_v2=false',
+              'shell_environment_policy.inherit="none"',
+              'shell_environment_policy.set={PATH="/opt/python/bin:/usr/local/bin:/usr/bin:/bin",HOME="/tmp",CODEX_HOME="/tmp/codex",TMPDIR="/tmp",LANG="C.UTF-8"}']
     command = [binary, 'app-server']
     for option in config:
         command += ['-c', option]

@@ -67,7 +67,9 @@ class Executor:
         fd = os.open(self.token_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
         with os.fdopen(fd, 'w') as file:
             file.write(token)
-        self.call('run', '--detach', '--rm', '--init', '--name', self.name,
+        # Use the same explicit teardown for normal completion, failed startup
+        # and Stop; finally removes this named executor.
+        self.call('run', '--detach', '--init', '--name', self.name,
                   '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges',
                   '--pids-limit=128', '--memory=2g', '--cpus=2',
                   '--tmpfs', '/tmp:rw,size=512m', '--userns=keep-id',
