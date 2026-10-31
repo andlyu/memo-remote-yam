@@ -32,6 +32,8 @@ node('runner-name').value='Fixture';node('runner-email').value='fixture@example.
  assert.equal(calls.at(-1).path,'/api/runs/active-fixture/stop');
  assert.equal(node('stop').disabled,false);
  assert.match(node('run-progress').textContent,/Stop could not be confirmed/);
+ vm.runInContext(`renderProgress({status:'running',active:true,timing:{}});`,context);
+ assert.match(node('run-progress').textContent,/Stop could not be confirmed/);
  console.log(JSON.stringify({failure:'passed',stall:'passed',submissionRecovery:'passed',
    historicalSelectionStop:'passed',motionRequests:0,physical:false}));
 })().catch(e=>{console.error(e);process.exitCode=1;});

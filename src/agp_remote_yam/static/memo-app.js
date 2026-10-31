@@ -1,5 +1,5 @@
 "use strict";
-let pendingCorrection=null, memoryJob=null, memoryJobActive=false;
+let pendingCorrection=null, memoryJob=null, memoryJobActive=false, stopFailure="";
 const $ = id => document.getElementById(id);
 let stopCameras=null;
 let config, activeRun = null, selected = null, cursor = -1, rows = [], polling = false, fileListKey = "", terminalHistoryKey = "";
@@ -52,7 +52,7 @@ async function poll() {
     const finished=terminal.has(run.status)&&!run.active;
     const controlled=activeRun&&activeRun!==identity?await api("/api/runs/"+activeRun+"?after=99999999"):run;
     if(controlled.active&&controlled.owned!==false)activeRun=controlled.id;
-    else if(terminal.has(controlled.status)&&activeRun===controlled.id)activeRun=null;
+    else if(terminal.has(controlled.status)&&activeRun===controlled.id){activeRun=null;stopFailure="";}
 
     $("run-attribution").textContent=(run.approach||"MEMO")+" · "+(run.runner?.name||"Unattributed legacy run")+" · "+(run.robot_id||config.robot_id)+" · "+(run.execution_mode||"interactive").replaceAll("_"," ")+" · "+displayStatus(run);
     $("run-timing").textContent=timingLabel(run);
@@ -74,7 +74,7 @@ $("task-form").addEventListener("submit",async event=>{
     const run=await api("/api/runs",{task:$("task").value,duration_s:Number($("duration").value),experience_run:$("experience").value||null,goal_image:goal,memo:true,robot_id:config.robot_id,runner:runner(),execution_mode:verification?"automated_test":automated?"unattended_test":"interactive",timing:{page_entered_at:performance.timeOrigin/1000,run_clicked_at:Date.now()/1000}});saveIdentity();activeRun=run.id;clearRun(run.id);$("stop").disabled=false;$("robot-select").disabled=true;await poll();history().catch(exc=>error(exc.message));
   }catch(exc){error(exc.message);$("run-progress").textContent="Task submission failed · correct the error below and try Run again.";$("run").disabled=!!activeRun||memoryJobActive;}
 });
-$("stop").onclick=async()=>{if(!activeRun)return;const target=activeRun;$("stop").disabled=true;try{await api("/api/runs/"+target+"/stop",{});await poll();}catch(exc){error(exc.message);$("stop").disabled=!activeRun;$("run-progress").hidden=false;$("run-progress").textContent="Stop could not be confirmed · "+exc.message+". Use Stop again; watch the live arms.";}};
+$("stop").onclick=async()=>{if(!activeRun)return;const target=activeRun;$("stop").disabled=true;try{await api("/api/runs/"+target+"/stop",{});stopFailure="";await poll();}catch(exc){stopFailure=exc.message;error(exc.message);$("stop").disabled=!activeRun;$("run-progress").hidden=false;$("run-progress").textContent="Stop could not be confirmed · "+exc.message+". Use Stop again; watch the live arms.";}};
 $("refresh").onclick=()=>history().catch(exc=>error(exc.message));
 $("goal").onchange=()=>{const file=$("goal").files[0];$("goal-preview").hidden=!file;if(file)$("goal-preview").src=URL.createObjectURL(file);};
 async function init(){try{api("/api/acceptance").then(v=>{$("verification-status").textContent="Verification: "+v.passed+"/"+v.total+" ("+v.percentage+"%)";}).catch(()=>{$("verification-status").textContent="Verification status unavailable";});const requestedRobot=new URLSearchParams(location.search).get("robot_id");config=document.getElementById("initial-config")?JSON.parse(document.getElementById("initial-config").textContent):await api("/api/config"+(requestedRobot?"?robot_id="+encodeURIComponent(requestedRobot):""));$("robot-select").replaceChildren(...config.robots.map(x=>new Option(x.name,x.id)));$("robot-select").value=config.robot_id;$("mode").textContent=config.camera_source==="synthetic"?"Synthetic cameras":config.mode==="offline_mock"?"Live cameras · mock robot":"Live cameras · API robot";$("mode").classList.toggle("mock",config.mode==="offline_mock");$("robot").textContent=config.robot_id;$("model").textContent=config.agent==="scripted"?"Scripted agent · no model usage":"Model: MEMO · "+(config.foundation_model||"scripted fixture");if(config.mode==="offline_mock")$("task").value="Demonstrate the offline agent → API controller loop.";stopCameras=AgPCameras.start(config);station();setInterval(station,10000);const runs=await history();const current=runs.find(x=>x.owned!==false&&(x.active||!terminal.has(x.status)));activeRun=current?.id||null;const requestedRun=new URLSearchParams(location.search).get("run");if(current||requestedRun){clearRun(current?.id||requestedRun);await poll();}$("run").disabled=!!activeRun||memoryJobActive;memory().catch(exc=>error(exc.message));restoreMemoryJob().catch(exc=>error(exc.message));setInterval(()=>{poll();pollMemoryJob();},800);}catch(exc){error(exc.message);}}
@@ -148,6 +148,8 @@ async function restoreMemoryJob(){const data=await api("/api/skillbook/jobs");co
 
 function renderProgress(run){
  const progress=$("run-progress");progress.hidden=false;
+ if(stopFailure&&activeRun){progress.textContent="Stop could not be confirmed · "+stopFailure+". Use Stop again; watch the live arms.";return;}
+ if(terminal.has(run.status)&&run.active){progress.textContent="Session "+run.status.replaceAll("_"," ")+" · finishing cleanup before a new Run can start.";return;}
  if(!run.active&&terminal.has(run.status)){progress.textContent=run.error?"Run ended · "+run.error+". Review the error; start a new Run when ready. Movement will not be replayed.":run.outcome?.summary||"Run ended · review activity and retained evidence.";return;}
  const home=run.timing?.home_completed_at;
  const elapsed=home?Date.now()/1000-home:null;
