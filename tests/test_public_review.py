@@ -35,7 +35,13 @@ def test_public_demo_review_redacts_contacts_and_never_grants_controls(tmp_path)
 def test_visible_acceptance_fraction_counts_only_verified_requirements(tmp_path):
     app=App(Settings(data=tmp_path,demo=True,memo_site=True))
     status,_,value=request(app,'/api/acceptance')
-    assert status==200 and value['total']==15
+    from pathlib import Path
+    import re
+    checklist=Path(__file__).resolve().parents[1]/'docs/COMPLETION-CHECKLIST.md'
+    documented=re.findall(r'^- \[([ x])\] ',checklist.read_text(),re.M)
+    assert status==200 and value['total']==len(documented)==17
+    assert value['passed']==sum(mark=='x' for mark in documented)==14
+    assert {row['id'] for row in value['requirements'] if not row['passed']}=={13,15,17}
     assert value['passed']==sum(row['passed'] for row in value['requirements'])
     assert value['percentage']==round(100*value['passed']/value['total'],1)
     config=request(app,'/api/config')[2]

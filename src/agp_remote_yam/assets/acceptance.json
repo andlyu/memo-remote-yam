@@ -1,6 +1,6 @@
 {
   "harness_revision": "1619d7f25190ed00c37da6006b3f16c4580eb166",
-  "updated_at": "2026-10-31T08:06:00Z",
+  "updated_at": "2026-10-31T08:16:00Z",
   "requirements": [
     {
       "id": 1,
@@ -89,7 +89,7 @@
     }
   ],
   "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/COMPLETION-CHECKLIST.md",
-  "note": "14/17 verified after adding the two shared control-contract/task-acceptance requirements to the retained 15-item checklist. Control CI and release preflight pass. Latest physical test read top/wrist depth and completed an approach, then stopped before grasp/lift/place. Task acceptance, timing and final signoff remain open.",
+  "note": "14/17 verified. Fresh physical test executed approach, descent, close, lift command, lower, release and withdrawal, but the apple stayed on the plate; physical task review failed. Startup timing and final task signoff remain open. Software/model mock checks do not establish grasp success.",
   "scope": "Current integration; earlier bounded joint test retains its visual review. Later apple task failure reopens timing and final end-to-end signoff.",
   "physical_reviews": [
     {
@@ -105,5 +105,16 @@
       "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/evidence/2026-10-30-final-physical.json"
     }
   ],
-  "control_contract_revision": "79c4e454aa829814152f8ff32a1979e68e93483d"
+  "control_contract_revision": "79c4e454aa829814152f8ff32a1979e68e93483d",
+  "task_reviews": [
+    {
+      "run_id": "d75a70e11a9f4a72bfd37812b3bb4f59",
+      "created_at": 1793433949.859701,
+      "status": "failed",
+      "runtime_revision": "35a471e9803fc2f24cb6605ae11d26d1699a65b2",
+      "summary": "The apple stayed on the plate during the lift. Arm and gripper commands completed, but grasp and lift-and-replace were not achieved. The requested 50mm lift achieved about22mm with28.1mm target error.",
+      "evidence": "/api/runs/d75a70e11a9f4a72bfd37812b3bb4f59",
+      "validation": "Human-visible retained live views and measured run state reviewed by the integration agent; original model done result is unchanged."
+    }
+  ]
 }

@@ -675,3 +675,33 @@ in29.034s: joint adjustment, gripper close, restored joints, gripper open; four
 commands, physical=false. This verifies sequencing only, not physical placement.
 A verifier working-directory PermissionError occurred before inference and was
 resolved by using its readable candidate directory; no physical command existed.
+
+
+## Representative physical task review — October31,2026
+
+Runtime35a471e normal-UI rund75a70e11a9f4a72bfd37812b3bb4f59 completed seven
+commands: approach, descent, close, lift, lower, open and withdraw. Fresh numeric
+overhead/wrist depth was repeatedly inspected. The apple remained on the plate
+during the lift, so physical task acceptance FAILED despite the model's retained
+status done. The50mm lift achieved22.094mm in measured FK with28.096mm endpoint
+error; gripper closure alone was not grasp evidence. Independent review is now
+shown next to this exact run; original model declaration and raw evidence remain.
+
+Offline reconstruction of all five Cartesian requests through the actual
+calibration and pinned solver gave planned endpoint errors0.000664–0.001910mm.
+This rejects an IK endpoint-generation hypothesis; measured physical tracking
+differs substantially. The canonical controller's settled feedback and the
+adapter's measured_completed_and_settled label establish joint execution, not
+Cartesian precision or successful object manipulation. No solver, dependency,
+limits, hardware tolerances or automatic retry behavior was changed. No failed
+or uncertain movement was retried.
+
+Run1793433949.787; matched Home1793433960.1027112. First method request
+1793434034.8749695 is already85.088s afterRun/74.772s afterHome, so both timing
+targets missed before motion could begin. Measured completion93.662/83.347s
+retained separately. Timed UI samples cover startup, approach and later sequence
+with between-batch gaps; exact first visual onset remains unverified. No
+GPU/research exception. Current14/17: physical task, startup timing and final
+end-to-end signoff remain open. This is not a completed manipulation integration.
+
+Final software check122passed23.13s, including reviewed-task failure presentation without mutating the model declaration or issuing control requests. The earlier35a471e CI failed its legacy15-item count assertion after acceptance expanded to17; the assertion now checks the documented checklist,14 current passes and the three unmet IDs. This presentation/test correction changes no physical runtime behavior. Latest211.125s physical replay played0.209→32.9272s with no playback error.

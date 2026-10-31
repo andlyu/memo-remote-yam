@@ -24,6 +24,15 @@ vm.runInContext(`verificationReport={physical_reviews:[{run_id:'reviewed',status
 assert.match(vm.runInContext(`timingLabel({id:'reviewed',timing:{run_clicked_at:100,home_completed_at:112}})`,context),/Both timing targets met/);
 assert.doesNotMatch(vm.runInContext(`timingLabel({id:'different',timing:{run_clicked_at:100,home_completed_at:112}})`,context),/Both timing targets met/);
 assert.doesNotMatch(vm.runInContext(`timingLabel({id:'reviewed',timing:{run_clicked_at:101,home_completed_at:112}})`,context),/Both timing targets met/);
+vm.runInContext(`verificationReport={task_reviews:[{run_id:'failed-task',created_at:123,status:'failed',summary:'Object remained on its support.'}]};
+var reviewedRun={id:'failed-task',created_at:123,status:'stopped',active:false,mode:'physical_api',outcome:{status:'done',summary:'Model claimed done'}};
+renderProgress(reviewedRun);`,context);
+assert.equal(vm.runInContext('displayStatus(reviewedRun)',context),'Task not passed');
+assert.match(node('run-progress').textContent,/Object remained on its support/);
+assert.equal(vm.runInContext('reviewedRun.outcome.status',context),'done'); // Original model declaration is retained.
+assert.equal(vm.runInContext('displayStatus({...reviewedRun,created_at:124})',context),'Agent finished');
+assert.equal(vm.runInContext('taskReview({...reviewedRun,active:true})',context),null);
+assert.equal(calls.length,0); // Review display never causes a control request.
 node('task').value='Offline fixture';node('duration').value='60';
 node('runner-name').value='Fixture';node('runner-email').value='fixture@example.test';
 (async()=>{

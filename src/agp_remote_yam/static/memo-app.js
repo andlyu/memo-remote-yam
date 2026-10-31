@@ -11,7 +11,8 @@ async function api(path, value) {
   return result;
 }
 function error(message) { $("error").textContent = message || ""; $("error").hidden = !message; }
-function displayStatus(run){return run.error?"Failed":terminal.has(run.status)&&!run.active&&run.outcome?.status==="give_up"?"Could not complete":terminal.has(run.status)&&!run.active&&run.outcome?.status==="done"?"Agent finished":run.status.replaceAll("_"," ");}
+function taskReview(run){return !run.active&&run.mode!=="offline_mock"?verificationReport?.task_reviews?.find(r=>r.run_id===run.id&&r.created_at===run.created_at):null;}
+function displayStatus(run){return taskReview(run)?.status==="failed"?"Task not passed":run.error?"Failed":terminal.has(run.status)&&!run.active&&run.outcome?.status==="give_up"?"Could not complete":terminal.has(run.status)&&!run.active&&run.outcome?.status==="done"?"Agent finished":run.status.replaceAll("_"," ");}
 function timingLabel(run){
  if(run.mode==="offline_mock")return "Mock robot · no physical execution";
  const timing=run.timing||{};
@@ -66,7 +67,7 @@ async function poll() {
     if(nearBottom)$("events").scrollTop=$("events").scrollHeight;
     renderProgress(run);$("event-count").textContent=rows.length+" events";renderFiles(run.files);
     if(run.error)error(run.error);
-    if(run.outcome){$("outcome").replaceChildren();const message=document.createElement("div"),scope=document.createElement("small");message.textContent=run.outcome.summary;scope.textContent=config.mode==="offline_mock"?(config.agent==="scripted"?"Mock transport verification only. No model inference or physical robot.":"Real model, mock robot. No physical task validation."):"Agent-declared outcome. Review captures and evidence before judging task success.";$("outcome").append(message,scope);$("outcome").hidden=false;}
+    if(run.outcome){$("outcome").replaceChildren();const message=document.createElement("div"),scope=document.createElement("small");message.textContent=run.outcome.summary;scope.textContent=taskReview(run)?.status==="failed"?"Physical review: task not passed. "+taskReview(run).summary+" Original agent declaration retained above.":config.mode==="offline_mock"?(config.agent==="scripted"?"Mock transport verification only. No model inference or physical robot.":"Real model, mock robot. No physical task validation."):"Agent-declared outcome. Review captures and evidence before judging task success.";$("outcome").append(message,scope);$("outcome").hidden=false;}
     const historyKey=selected+run.status+"|"+(activeRun||"");if(finished&&terminalHistoryKey!==historyKey){terminalHistoryKey=historyKey;await history();await memory();}
   } catch(exc){error(exc.message);}finally{polling=false;}
 }
@@ -152,7 +153,7 @@ function renderProgress(run){
  const progress=$("run-progress");progress.hidden=false;
  if(stopFailure&&activeRun){progress.textContent="Stop could not be confirmed · "+stopFailure+". Use Stop again; watch the live arms.";return;}
  if(terminal.has(run.status)&&run.active){progress.textContent="Session "+run.status.replaceAll("_"," ")+" · finishing cleanup before a new Run can start.";return;}
- if(!run.active&&terminal.has(run.status)){progress.textContent=run.error?"Run ended · "+run.error+". Review the error; start a new Run when ready. Movement will not be replayed.":run.outcome?.summary||"Run ended · review activity and retained evidence.";return;}
+ if(!run.active&&terminal.has(run.status)){const review=taskReview(run);if(review?.status==="failed"){progress.textContent="Physical task review: not passed · "+review.summary;return;}progress.textContent=run.error?"Run ended · "+run.error+". Review the error; start a new Run when ready. Movement will not be replayed.":run.outcome?.summary||"Run ended · review activity and retained evidence.";return;}
  const lastCall=rows.filter(e=>e.kind==="tool_call").at(-1);
  if(lastCall?.message==="frames"&&!rows.some(e=>e.id>lastCall.id&&e.kind==="tool_result"&&e.message==="frames")){
   progress.textContent=lastCall.arguments?.depth?"Reading fresh overhead/wrist RGB-D · waiting for measured depth and camera calibration before choosing a target.":"Reading fresh camera views before the next decision.";return;
