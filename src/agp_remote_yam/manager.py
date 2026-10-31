@@ -37,6 +37,13 @@ class RunManager:
     def __init__(self, settings):
         runner_root()
         self.settings = settings
+        if settings.agent_mode == "remote":
+            # Import model/transport libraries once at service startup rather
+            # than charging the first visitor for cold Python imports.
+            from remote_yam.controller import RunnerController
+            from .backend import ApiBackend
+            from .policy import AgPPolicy
+            from remote_yam import mujoco_ik
         self.store = RunStore(Path(settings.data) / "runs")
         self.skillbook = None
         if settings.memo_site:
@@ -124,6 +131,7 @@ class RunManager:
         robot_id = context["robot_id"]
         recording = RunRecording(directory, robot_id, physical=not self.settings.offline)
         try:
+            runtime.prepare(task)
             recording.start()
             api = MockStation() if self.settings.offline else AttributedSessionAPI(
                 self.settings.origin, robot_id=robot_id, supports_trajectories=True,
@@ -133,20 +141,40 @@ class RunManager:
             context["controller"] = controller
             if context["stopped"].is_set():
                 return
-            factory = (lambda policy: MockBackend(directory / "workspace", policy, journal)) if self.settings.offline else (
+            create_backend = (lambda policy: MockBackend(directory / "workspace", policy, journal)) if self.settings.offline else (
                 lambda policy: ApiBackend(self.settings.origin, robot_id,
                                           directory / "workspace", policy, journal))
+            backend, backend_lock = None, threading.Lock()
+            def factory(policy):
+                nonlocal backend
+                with backend_lock:
+                    if backend is None:
+                        backend = create_backend(policy)
+                    return backend
             policy = AgPPolicy(runtime, factory, journal)
             policy.physical = not self.settings.offline
             journal.add("lifecycle", "Joining the mock queue" if self.settings.offline else "Joining the public robot queue")
-            controller.update_monitor_observation(api.get_robot_observation(robot_id))
+            monitor = api.get_robot_observation(robot_id)
+            controller.update_monitor_observation(monitor)
             controller.join_and_run(policy, task, run_duration_s=duration)
+            if runtime.mode == "remote":
+                def prime():
+                    try:
+                        runtime.prime(factory(policy), monitor.get("observation", monitor.get("payload", monitor)))
+                    except Exception as exc:
+                        # Failed read-only priming is not replaced by stale or
+                        # synthetic data. The leased startup can still report it.
+                        journal.add("worker", "Read-only pre-admission observations unavailable",
+                                    error_type=type(exc).__name__)
+                threading.Thread(target=prime, name="agp-initial-scene", daemon=True).start()
             if context["stopped"].is_set():
                 controller.stop("user_requested")
             previous = None
             # Pinned RunnerController exposes its lifecycle worker, rather than
             # the HostedRunner visitor wrapper's busy() convenience method.
             while controller._worker is not None and controller._worker.is_alive():
+                if runtime.finished.is_set() and not policy._started:
+                    controller.stop("agent_preparation_failed")
                 status = controller.status()
                 current = status["status"]
                 if current != previous:

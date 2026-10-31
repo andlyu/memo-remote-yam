@@ -93,3 +93,17 @@ def test_docker_stop_timeout_still_reaps_agent(tmp_path, monkeypatch):
     runtime.cancel()
     assert runtime.finished.wait(3)
     assert runtime.process.poll() is not None
+
+
+def test_stop_during_preparation_reaps_worker_without_creating_robot_tools(tmp_path,monkeypatch):
+    _,directory=RunStore(tmp_path).create('cancel before admission')
+    runtime=AgentRuntime(directory,Journal(directory),mode='remote')
+    runtime.command=lambda:[sys.executable,'-u','-c','import sys;sys.stdin.read()']
+    monkeypatch.setattr(subprocess,'run',lambda *a,**k:None)
+    runtime.prepare('No robot commands while queued')
+    deadline=time.monotonic()+2
+    while runtime.process is None and time.monotonic()<deadline:time.sleep(.01)
+    assert runtime.process is not None
+    assert not runtime.backend_ready.is_set() and not hasattr(runtime,'bridge')
+    runtime.cancel()
+    assert runtime.finished.wait(2) and runtime.process.poll() is not None

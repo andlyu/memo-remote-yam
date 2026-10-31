@@ -60,31 +60,40 @@ runner identity, run history/replay, and an actual-model/mock-robot test before 
 trial. Check CSRF, ownership and Stop through the existing offline suite.
 Do not submit a physical robot task just to test a deployment.
 
-The rootless model/semantic-memory two-run mock passed in 280.94 seconds; its
-container and credential boundaries were checked separately. The adapter suite
-passed 57 tests on the deployed application revision. These checks do not
-establish physical task success.
-
 To withdraw this website, remove only its dedicated proxy site include,
 validate and reload Caddy, then stop/disable its own web unit. Keep run-data and any legacy skillbook backups. Other websites and the public robot API are independent.
 
 
-The startup repair avoids loading the semantic encoder for empty visible memory
-scopes, supplies the authoritative protocols in the initial coding context and
-keeps the observation/action loop within a coding turn. The deployment retains
-Astra medium reasoning. Fresh native-worker mock smoke tests completed and
-verified a measured relative joint change; the best observed first mock command
-completion was 24.376 seconds. This is not a physical latency pass. Use the
-[shared completion harness and audit](COMPLETION-CHECKLIST.md) for acceptance;
-physical timing, runner identity and retained replay gates remain open.
+The native worker uses Astra with low reasoning and supported Fast mode. It
+prepares its isolated executor and plans from explicitly labelled public,
+read-only observations while the existing queue prepares the robot. The arms
+may home in that interval. Only a matching, active, settled lease starts the
+robot bridge. A queued state read then returns fresh leased feedback;
+pre-admission motion requests are rejected rather than released later.
+The agent must compute motion targets from that fresh state, and request new
+images/depth whenever the changed pose or uncertainty requires them. No task
+script or startup movement is supplied by the host.
+
+Initial RGB views are fetched in parallel, with original images/calibration
+retained and bounded JPEG previews supplied directly to the model. The host's
+initial input manifest is outside the generated-code mount. Source timestamps
+preceding settlement are rejected on leased captures. Numeric depth remains
+available through the unchanged interface; RGB is not labelled RGB-D.
+
+The delayed-lease actual-model mock `32e2b9f89a1e4fdaaccaf6bc70f43f98`
+completed its first generated command at11.240 seconds, including a deliberate
+ten-second simulated queue wait. It made one state-relative move after
+admission and verified it. This is mock evidence, not a physical timing pass.
+The adapter suite passed83 tests in14.39 seconds. Review the
+[shared completion harness](COMPLETION-CHECKLIST.md) before any completion claim.
 
 ### AgP-only deployment repair
 
 The correction from combined application `31b604f` makes pure Agent as Policy
 the default. Existing MEMO records stay on disk and are excluded from AgP history.
 Use an isolated release directory, install its wheel, atomically switch only
-`/opt/agp-remote-yam`, then restart only `agp-web.service` after checking for active
-runs. Roll back the wheel and symlink together. Preserve the broker, authentication,
+`/opt/agp-remote-yam`, then restart the dedicated services as described below after checking for active
+runs. Roll back the wheel and symlink together. Preserve authentication,
 robot service and public Playground. Set `AGP_SOURCE_REVISION` to the deployed commit.
 
 Physical replay requires host `ffmpeg`/`ffprobe` and the existing public camera
@@ -92,3 +101,9 @@ feed. The recorder is independent of the generated-code container and saves to
 the run's `recording/` directory. Owner checks protect video and byte-range
 playback. Missing footage is labelled unavailable, never replaced by mock video.
 Use per-executor cleanup; do not remove every Podman container on web-service stop.
+
+When the native protocol changes, deploy its matching client and broker together.
+After confirming no active AgP run, stop the web unit, install the verified wheel,
+switch the release link, restart `agp-codex-broker.service`, then start
+`agp-web.service`. Roll back both units with the previous wheel if startup fails.
+Authentication files and other services remain independent.

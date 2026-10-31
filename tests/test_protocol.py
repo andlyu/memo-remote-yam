@@ -92,3 +92,24 @@ def test_idle_feedback_refresh_preserves_last_motion_capture_boundary(tmp_path):
     feedback = policy.feedback()
     assert feedback["observed_at"] == 200.
     assert feedback["settled_after"] == 100.
+
+
+def test_pre_admission_motion_is_rejected_but_pending_state_is_fresh(tmp_path):
+    from types import SimpleNamespace
+    import threading,time,json
+    from agp_remote_yam.storage import RunStore,Journal
+    from agp_remote_yam.bridge import FileBridge
+    _,directory=RunStore(tmp_path).create('admission boundary')
+    root=directory/'workspace';calls=[];stopped=threading.Event()
+    for i,command in enumerate(['move_joints','state'],1):
+        (root/f'bridge/req_{i:06d}.json').write_text(json.dumps(dict(id=i,cmd=command,args={})))
+    backend=SimpleNamespace(command=lambda arm,command,args:(calls.append(command) or dict(fresh=True)))
+    bridge=FileBridge(root,backend,Journal(directory),stopped,admitting=True);bridge.start()
+    try:
+        deadline=time.monotonic()+2
+        response=root/'bridge/resp_000002.json'
+        while not response.exists() and time.monotonic()<deadline:time.sleep(.01)
+        assert json.loads((root/'bridge/resp_000001.json').read_text())['ok'] is False
+        assert json.loads(response.read_text())==dict(ok=True,fresh=True)
+        assert calls==['state']
+    finally:stopped.set();bridge.thread.join(2)

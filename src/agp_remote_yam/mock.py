@@ -60,6 +60,10 @@ class MockBackend(ApiBackend):
         result["physical"] = False
         return result
 
+    def initial_frames(self, observation):
+        return {arm: self.frames(arm, dict(cams=["top", "wrist"] if arm == "left" else ["wrist"],
+                                          depth=False), observation) for arm in ("left", "right")}
+
     def frames(self, arm, arguments, observation):
         self.capture_id += 1
         paths = {}

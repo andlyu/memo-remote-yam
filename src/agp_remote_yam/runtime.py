@@ -35,6 +35,9 @@ class AgentRuntime:
         self.maintenance = False
         self._lock = threading.RLock()
         self.container = "agp-" + self.directory.name
+        self.backend_ready = threading.Event()
+        self.initial_ready = threading.Event()
+        self.thread = None
 
     def check_available(self):
         binary = {"docker": "docker", "remote": "podman"}.get(self.mode, self.executable)
@@ -53,7 +56,7 @@ class AgentRuntime:
             return [self.executable, "-a", "never", *base[:1], "--sandbox", "workspace-write", *base[1:]]
         if self.mode == "remote":
             return [sys.executable, "-m", "agp_remote_yam.remote_codex", "-a", "never",
-                    *base[:1], "--sandbox", "workspace-write", *base[1:]]
+                    *base[:1], "--sandbox", "workspace-write", "--prepare", *base[1:]]
         base[base.index(str(self.workspace))] = "/work"
         return ["docker", "run", "--rm", "--init", "--interactive", "--name", self.container,
                 "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
@@ -63,15 +66,36 @@ class AgentRuntime:
                 "--workdir", "/work", self.image, "codex", *base[:1],
                 "--dangerously-bypass-approvals-and-sandbox", *base[1:]]
 
+    def prepare(self, task):
+        """Warm only the isolated executor; no model turn or robot tool yet."""
+        if self.mode != "remote" or self.thread is not None:
+            return
+        Workspace(self.workspace).json("RESULT_SCHEMA.json", RESULT_SCHEMA)
+        self.thread = threading.Thread(target=self._run, args=(task,), name="agp-coding-agent", daemon=True)
+        self.thread.start()
+
+    def prime(self, backend, observation):
+        """Read-only scene context for planning while admission prepares the arms."""
+        with self._lock:
+            if self.backend_ready.is_set() or self.stopped.is_set():
+                return
+            self.initial_backend, self.monitor_observation = backend, observation
+            self.initial_ready.set()
+
     def start(self, backend, task):
         from importlib.resources import files
         if self.mode == "demo":
             (self.workspace / "demo_agent.py").write_bytes(files("agp_remote_yam").joinpath("assets/demo_agent.py").read_bytes())
         Workspace(self.workspace).json("RESULT_SCHEMA.json", RESULT_SCHEMA)
-        self.bridge = FileBridge(self.workspace, backend, self.journal, self.stopped, self.memory)
+        self.bridge = FileBridge(self.workspace, backend, self.journal, self.stopped, self.memory,
+                                 admitting=self.mode == "remote")
+        self.backend = backend
         self.bridge.start()
-        self.thread = threading.Thread(target=self._run, args=(task,), name="agp-coding-agent", daemon=True)
-        self.thread.start()
+        self.backend_ready.set()
+        self.initial_ready.set()
+        if self.thread is None:
+            self.thread = threading.Thread(target=self._run, args=(task,), name="agp-coding-agent", daemon=True)
+            self.thread.start()
 
     def _run(self, task):
         from importlib.resources import files
@@ -89,7 +113,7 @@ class AgentRuntime:
             "Task: " + task
         )
         if not self.maintenance:
-            prompt += ("\nBatch independent initial state and camera requests in one tool call where practical. "
+            prompt += ("\nBatch independent additional state and camera requests in one tool call where practical. "
                        "Inspect fresh images before choosing a motion. Keep working within this turn.\n"
                        "Authoritative robot interface:\n" + files("agp_remote_yam").joinpath("assets/INTERFACE.md").read_text())
         if self.maintenance:
@@ -146,7 +170,38 @@ class AgentRuntime:
         finally:
             self.finished.set()
 
+    def _initial_prompt(self, prompt):
+        with self._lock:
+            backend = getattr(self, "backend", None) if self.backend_ready.is_set() else getattr(self, "initial_backend", None)
+            observation = None if self.backend_ready.is_set() else getattr(self, "monitor_observation", None)
+        if self.mode != "demo" and not self.maintenance and hasattr(backend, "initial_frames"):
+            from .observation import initial_input
+            started = time.monotonic()
+            snapshot = initial_input(backend, observation)
+            Workspace(self.directory).json("initial-input.json", snapshot)
+            prompt += ("\nFresh initial observations are supplied below and as ordered image inputs on the native remote worker. "
+                       "Inspect these images now; request more views or numeric depth when the task requires them. "
+                       "The full resolution images and calibration files are in the workspace. "
+                       "These just-captured images and measured states already fulfill initial observation; "
+                       "do not fetch the same views again unless missing detail or changed conditions require it. "
+                       "Refresh state inside your generated program before motion; all actions still require the active lease. "
+                       "Use your first coding tool call to write and execute the useful program when the observations suffice; "
+                       "avoid a separate status announcement. Verify with fresh observations after actions.\n"
+                       + json.dumps(snapshot["context"]))
+            if observation is not None:
+                prompt += ("\nThese are READ-ONLY observations BEFORE queue admission. The arms may home during preparation. "
+                           "Use this time to inspect the scene and write your program. The robot client waits for admission. "
+                           "Your program MUST read fresh measured state after admission before choosing a motion target; "
+                           "never use the pre-admission joint pose as an action target. Reobserve images when changed arm "
+                           "configuration or scene uncertainty affects the action. Motion requests made before admission "
+                           "are rejected. There is no permission to move before the lease is active.")
+            self.journal.add("initial_observation", "Fresh state and camera views supplied to the coding agent",
+                             context=snapshot["context"], duration_s=round(time.monotonic()-started, 3))
+        return prompt
+
     def _turn(self, prompt):
+        if self.mode != "remote":
+            prompt = self._initial_prompt(prompt)
         env = {key: value for key, value in os.environ.items()
                if key in ("HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR", "CODEX_HOME",
                           "CODEX_API_KEY", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS",
@@ -163,6 +218,16 @@ class AgentRuntime:
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True,
                     start_new_session=True, bufsize=1)
                 process = self.process
+                self.state = "running"
+            if self.mode == "remote":
+                self.state = "preparing_worker"
+                self.journal.add("worker", "Preparing the isolated coding environment while waiting for the robot")
+                while not self.initial_ready.wait(.05):
+                    if self.stopped.is_set() or process.poll() is not None:
+                        return None
+                if self.stopped.is_set():
+                    return None
+                prompt = self._initial_prompt(prompt)
                 self.state = "running"
             self.journal.add("agent", "Agent as Policy is observing and programming", model=self.model)
             process.stdin.write(prompt)
@@ -183,6 +248,9 @@ class AgentRuntime:
                     self.journal.add("assistant", message)
                 if event.get("type") in ("error", "turn.failed"):
                     self.journal.add("error", "Coding agent reported a failure")
+                if event.get("type") == "agp.profile":
+                    self.journal.add("worker_profile", "Coding worker: " + str(event.get("stage")),
+                                     profile=event)
             returncode = process.wait()
             if self.stopped.is_set():
                 return None
@@ -195,6 +263,10 @@ class AgentRuntime:
             return result
 
     def _deadline(self):
+        if self.mode == "remote":
+            while not self.backend_ready.wait(.1):
+                if self.stopped.is_set() or self.finished.is_set():
+                    return
         if not self.finished.wait(self.timeout_s):
             self.outcome = dict(status="give_up", summary="Agent run duration expired", evidence=[])
             self.cancel()

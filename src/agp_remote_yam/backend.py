@@ -1,5 +1,6 @@
 """AgP command surface; session admission and motor ownership stay upstream."""
 from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor
 import io
 import json
 import time
@@ -75,7 +76,22 @@ class ApiBackend:
         result["execution"] = "measured_completed_and_settled"
         return result
 
-    def frames(self, arm, arguments, observation):
+    def rgb_frames(self, roles):
+        with ThreadPoolExecutor(max_workers=len(roles)) as pool:
+            pending = {role: pool.submit(self.rgb.fetch, role,
+                self.origin + "/v1/robots/" + quote(self.robot_id, safe="") + "/cameras/" + role + ".jpg")
+                for role in roles}
+            return {role: future.result() for role, future in pending.items()}
+
+    def initial_frames(self, observation):
+        # Fetch independent cameras together, then compute transforms serially:
+        # the canonical FK engine has mutable state and is not thread safe.
+        frames = self.rgb_frames(("top", "left", "right"))
+        return {arm: self.frames(arm, dict(cams=["top", "wrist"] if arm == "left" else ["wrist"],
+                                         depth=False), observation, rgb_frames=frames)
+                for arm in ("left", "right")}
+
+    def frames(self, arm, arguments, observation, *, rgb_frames=None):
         cameras = arguments.get("cams", ["wrist", "top"])
         depth = arguments.get("depth", True)
         if (not isinstance(cameras, list) or not cameras or len(set(cameras)) != len(cameras)
@@ -87,6 +103,9 @@ class ApiBackend:
             measured_state=self.state(arm, observation), synchronized_with_images=False,
             calibration_quality=self.report.get("quality"))}
         paths = {}
+        roles = [arm if name == "wrist" else "top" for name in cameras if name != "wrist" or not depth]
+        if roles and rgb_frames is None:
+            rgb_frames = self.rgb_frames(roles)
         for name in cameras:
             role = arm if name == "wrist" else "top"
             camera = self.report["cameras"][role]
@@ -105,8 +124,10 @@ class ApiBackend:
                 paths["wrist_rgbd"] = prefix + "_wrist_rgbd.npz"
                 camera = snapshot.calibration["cameras"][role] if "cameras" in snapshot.calibration else camera
             else:
-                frame = self.rgb.fetch(role, self.origin + "/v1/robots/" + quote(self.robot_id, safe="") + "/cameras/" + role + ".jpg")
+                frame = rgb_frames[role]
                 captured = frame.source_captured_at
+                if captured is not None and captured <= observation.get("settled_after", observation["observed_at"]):
+                    raise ValueError("RGB image precedes the settled pose; request a fresh capture")
                 image = Image.open(io.BytesIO(frame.jpeg)).convert("RGB")
                 if list(image.size) != camera["image_size"]:
                     raise ValueError("RGB image dimensions differ from this run's calibration")
@@ -124,6 +145,8 @@ class ApiBackend:
                 distortion_coefficients=camera.get("distortion", []),
                 factory_intrinsics=camera.get("depth_intrinsics"),
                 source_time_available=captured is not None,
+                received_at=(getattr(rgb_frames[role], "received_at", None)
+                             if name != "wrist" or not depth else None),
                 rectified=camera.get("rectified", False), synchronized_with_state=False)
         calibration_path = prefix + "_calib.json"
         self.workspace.json(calibration_path, calibration)

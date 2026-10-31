@@ -11,13 +11,19 @@ from .workspace import Workspace
 
 
 class FileBridge:
-    def __init__(self, workspace, backend, journal, stopped, memory=None):
+    def __init__(self, workspace, backend, journal, stopped, memory=None, *, admitting=False):
         self.workspace = Workspace(workspace)
         self.backend, self.journal, self.stopped = backend, journal, stopped
         self.thread = None
         self.memory = memory
+        self.admitting = admitting
 
     def start(self):
+        # Only read requests may wait across admission. A pre-lease action must
+        # never be released later against a new robot pose or lease.
+        self.before_admission = ({(arm, name) for arm, folder in (("left", "bridge"), ("right", "bridge_right"))
+                                 for name in self.workspace.list(folder) if name.startswith("req_")}
+                                if self.admitting else set())
         self.thread = threading.Thread(target=self.run, name="agp-file-bridge", daemon=True)
         self.thread.start()
 
@@ -52,6 +58,8 @@ class FileBridge:
                         command, arguments = request.get("cmd"), request.get("args", {})
                         if not isinstance(command, str) or not isinstance(arguments, dict):
                             raise ValueError("Invalid AgP command")
+                        if (arm, name) in self.before_admission and command not in ("state", "frames", "status", "help"):
+                            raise ValueError("Motion was requested before lease admission; command rejected and not replayed")
                         self.journal.add("tool_call", command, arm=arm, arguments=arguments)
                         if arm == "memo":
                             result = self.memory.command(command, arguments)

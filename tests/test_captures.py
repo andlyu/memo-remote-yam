@@ -72,3 +72,32 @@ def test_frame_after_motion_is_valid_even_if_before_later_idle_telemetry(tmp_pat
     snapshot.metadata["captured_at"] = observation["observed_at"] - .5
     result = backend.frames("left", {"cams": ["wrist"], "depth": True}, observation)
     assert "wrist_depth" in result["files"]
+
+
+def test_stale_rgb_is_rejected_without_a_motion(tmp_path, station):
+    backend, observation, _, _=backend_for_capture(tmp_path, station)
+    original=backend.rgb.fetch
+    def stale(*args):
+        frame=original(*args);frame.source_captured_at=observation['observed_at']-1
+        return frame
+    backend.rgb.fetch=stale
+    with pytest.raises(ValueError,match='precedes the settled'):
+        backend.frames('left',dict(cams=['top'],depth=False),observation)
+
+
+def test_initial_input_has_both_measured_arms_and_three_labelled_images(tmp_path, station):
+    from agp_remote_yam.observation import initial_input,load_initial_input
+    from agp_remote_yam.workspace import Workspace
+    _,directory=RunStore(tmp_path).create('initial observation')
+    observation=station.get_robot_observation('yam-1')
+    policy=SimpleNamespace(feedback=lambda:observation,physical=False)
+    backend=MockBackend(directory/'workspace',policy,Journal(directory))
+    snapshot=initial_input(backend)
+    assert set(snapshot['context']['states'])=={'left','right'}
+    assert [(v['arm'],v['camera']) for v in snapshot['context']['views']]==[
+        ('left','top'),('left','wrist'),('right','wrist')]
+    assert len(snapshot['images'])==3
+    assert snapshot['context']['physical'] is False and snapshot['context']['depth_included'] is False
+    Workspace(directory).json('initial-input.json',snapshot)
+    assert load_initial_input(directory/'workspace')==snapshot
+    assert not (directory/'workspace/initial-input.json').exists()

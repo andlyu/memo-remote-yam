@@ -5,6 +5,7 @@ The only permitted client is the configured rootless AgP service UID.
 Codex contract is pinned to 0.159.0, including experimental environment APIs.
 """
 import argparse
+import base64
 import json
 import os
 from pathlib import Path
@@ -49,7 +50,13 @@ def receive(sock):
 
 
 def validate(value):
-    if (not isinstance(value, dict) or set(value) != {'op', 'protocol', 'prompt', 'executor_url', 'executor_token'}
+    if isinstance(value, dict) and value.get('op') == 'prepare':
+        if set(value) != {'op', 'protocol', 'executor_url', 'executor_token'} or value.get('protocol') != 'agp-codex-remote-v2':
+            raise ValueError('Invalid preparation request')
+        validate(dict(value, op='coding', protocol='agp-codex-remote-v1', prompt='prepare'))
+        return value
+    fields = {'op', 'protocol', 'prompt', 'executor_url', 'executor_token'}
+    if (not isinstance(value, dict) or set(value) not in (fields, fields | {'images'})
             or value['op'] != 'coding' or value['protocol'] != 'agp-codex-remote-v1'
             or not isinstance(value['prompt'], str) or not 0 < len(value['prompt']) <= 1_000_000
             or not isinstance(value['executor_url'], str)
@@ -58,6 +65,19 @@ def validate(value):
             or not isinstance(value['executor_token'], str)
             or not re.fullmatch(r'[A-Za-z0-9_-]{40,100}', value['executor_token'])):
         raise ValueError('Invalid coding request')
+    images = value.get('images', [])
+    if not isinstance(images, list) or len(images) > 4:
+        raise ValueError('Invalid coding images')
+    for image in images:
+        prefix = 'data:image/jpeg;base64,'
+        if not isinstance(image, str) or len(image) > 1_500_000 or not image.startswith(prefix):
+            raise ValueError('Only bounded inline JPEG observations are accepted')
+        try:
+            raw = base64.b64decode(image[len(prefix):], validate=True)
+        except ValueError:
+            raise ValueError('Invalid observation encoding') from None
+        if not raw.startswith(b'\xff\xd8') or not raw.endswith(b'\xff\xd9'):
+            raise ValueError('Observation is not a complete JPEG')
     return value
 
 
@@ -82,7 +102,8 @@ def execute(sock, value, *, binary, home, timeout=610):
               'features.skip_host_skill_discovery=true', 'features.remote_control=false',
               'features.browser_use=false', 'features.computer_use=false',
               'features.js_repl=false', 'features.code_mode=false',
-              'mcp_servers={}', 'notify=[]', 'model_reasoning_effort="medium"',
+              'mcp_servers={}', 'notify=[]', 'model_reasoning_effort="low"',
+              'service_tier="fast"', 'features.fast_mode=true',
               'features.shell_tool=true', 'features.unified_exec=true',
               'features.apply_patch_freeform=true', 'features.view_image=true',
               'features.shell_snapshot=false', 'features.shell_snapshot_v2=false',
@@ -95,6 +116,10 @@ def execute(sock, value, *, binary, home, timeout=610):
         with tempfile.TemporaryFile() as errors:
             process = subprocess.Popen(command, cwd=directory, env=env, stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE, stderr=errors, start_new_session=True)
+            started = time.monotonic()
+            def profile(stage, **details):
+                send(sock, dict(event=dict(type='agp.profile', stage=stage,
+                    elapsed_s=round(time.monotonic()-started, 3), **details)))
             def request(identity, method, params):
                 process.stdin.write((json.dumps(dict(id=identity, method=method, params=params))+'\n').encode())
                 process.stdin.flush()
@@ -136,23 +161,37 @@ def execute(sock, value, *, binary, home, timeout=610):
                                     process.stdin.write((json.dumps(dict(id=identity, error=dict(code=-32601, message='Not available')))+'\n').encode())
                                     process.stdin.flush()
                                 elif identity == 1:
+                                    profile('initialized')
                                     process.stdin.write(b'{"method":"initialized","params":{}}\n');process.stdin.flush()
                                     request(2, 'environment/add', dict(environmentId=environment,
                                         execServerUrl=value['executor_url'], authBearerToken=value['executor_token'], connectTimeoutMs=15000))
                                 elif identity == 2:
+                                    profile('environment_registered')
                                     ready_deadline = time.monotonic()+15
                                     request(5, 'environment/info', dict(environmentId=environment))
                                 elif identity == 5:
                                     if message.get('result', {}).get('cwd') != 'file:///work':
                                         raise RuntimeError('Executor did not confirm the isolated workspace')
+                                    profile('environment_ready')
                                     request(3, 'thread/start', dict(model='gpt-6-astra', approvalPolicy='never',
                                         sandbox='danger-full-access', ephemeral=True,
                                         environments=[dict(environmentId=environment, cwd='/work')],
                                         developerInstructions='All coding tools execute in the selected isolated /work environment. Read and write the task workspace there. No physical success is established by the harness.'))
                                 elif identity == 3:
                                     thread = message['result']['thread']['id']
+                                    profile('thread_ready', model=message['result'].get('model'),
+                                            service_tier=message['result'].get('serviceTier'),
+                                            reasoning_effort=message['result'].get('reasoningEffort'))
+                                    if value['op'] == 'prepare':
+                                        send(sock, dict(prepared=True))
+                                        extra = receive(sock)
+                                        if not isinstance(extra, dict) or set(extra) not in ({'prompt'}, {'prompt', 'images'}):
+                                            raise ValueError('Invalid prepared coding input')
+                                        value = validate(dict(value, op='coding', protocol='agp-codex-remote-v1', **extra))
                                     request(4, 'turn/start', dict(threadId=thread,
-                                        input=[dict(type='text', text=value['prompt'])], outputSchema=RESULT_SCHEMA))
+                                        input=[dict(type='text', text=value['prompt'])] +
+                                              [dict(type='image', url=image) for image in value.get('images', [])],
+                                        outputSchema=RESULT_SCHEMA))
                                 method = message.get('method');params = message.get('params', {})
                                 if method == 'item/completed' and params.get('item', {}).get('type') == 'agentMessage':
                                     text = params['item']['text']

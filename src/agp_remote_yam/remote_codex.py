@@ -14,6 +14,7 @@ import socket
 import struct
 import subprocess
 import sys
+import time
 
 MAX_FRAME = 8_000_000
 
@@ -101,6 +102,7 @@ def main():
     parser.add_argument('--ignore-user-config', action='store_true')
     parser.add_argument('--skip-git-repo-check', action='store_true')
     parser.add_argument('--json', action='store_true')
+    parser.add_argument('--prepare', action='store_true')
     parser.add_argument('--model', required=True)
     parser.add_argument('--output-schema', choices=['RESULT_SCHEMA.json'], required=True)
     parser.add_argument('--output-last-message', choices=['FINAL.json'], required=True)
@@ -113,21 +115,41 @@ def main():
     workspace = workspace_path(args.cd, settings['run_root'])
     if workspace != Path.cwd().resolve():
         raise ValueError('Unexpected coding working directory')
-    prompt = sys.stdin.read(1_000_001)
-    if not 0 < len(prompt) <= 1_000_000:
-        raise ValueError('Invalid remote coding prompt')
     executor = Executor(workspace, settings)
+    started = time.monotonic()
+    def profile(stage):
+        print(json.dumps(dict(type='agp.profile', stage=stage,
+                              elapsed_s=round(time.monotonic()-started, 3))), flush=True)
     def stopped(signum, frame):
         raise SystemExit(128 + signum)
     signal.signal(signal.SIGTERM, stopped)
     signal.signal(signal.SIGINT, stopped)
     try:
         url, token = executor.start()
+        profile('executor_ready')
         with socket.socket(socket.AF_UNIX) as sock:
             sock.settimeout(650)
             sock.connect(settings['broker_socket'])
-            send(sock, dict(op='coding', protocol='agp-codex-remote-v1', prompt=prompt,
-                            executor_url=url, executor_token=token))
+            if args.prepare:
+                send(sock, dict(op='prepare', protocol='agp-codex-remote-v2',
+                                executor_url=url, executor_token=token))
+                while True:
+                    prepared = receive(sock)
+                    if prepared.get('prepared') is True:
+                        break
+                    if 'event' not in prepared:
+                        raise RuntimeError('Remote coding preparation failed')
+                    print(json.dumps(prepared['event']), flush=True)
+            prompt = sys.stdin.read(1_000_001)
+            if not 0 < len(prompt) <= 1_000_000:
+                raise ValueError('Invalid remote coding prompt')
+            from .observation import load_initial_input
+            snapshot = load_initial_input(workspace)
+            message = dict(op='coding', protocol='agp-codex-remote-v1', prompt=prompt,
+                           executor_url=url, executor_token=token)
+            if snapshot is not None:
+                message['images'] = snapshot['images']
+            send(sock, {k: message[k] for k in ('prompt', 'images') if k in message} if args.prepare else message)
             while True:
                 value = receive(sock)
                 if 'event' in value:
