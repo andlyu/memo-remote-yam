@@ -62,7 +62,10 @@ def action_parts(action, scene=""):
 
 
 def validate_template(content):
-    tree = ast.parse(content)
+    try:
+        tree = ast.parse(content)
+    except SyntaxError as exc:
+        raise ValueError("Template content must be literal Python source for one parameterized function, not prose or Markdown. Read your scratch function file into content when constructing the JSON request; fix the saved code without repeating the robot motion.") from exc
     if len(tree.body) != 1 or not isinstance(tree.body[0], (ast.FunctionDef, ast.AsyncFunctionDef)):
         raise ValueError("A skill template must be one parameterized Python function")
     function = tree.body[0]

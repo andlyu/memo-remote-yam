@@ -1,139 +1,49 @@
-# Independent website hosting
+# Hosting the separate MEMO website
 
-Deploy `agp_remote_yam.web.App` from this repository as a separate service and
-HTTPS origin. It does not require a Playground provider, changes to the
-Playground website, or source from a private BluPe repository. The clean Remote
-YAM revision in `dependency.lock.json` supplies the existing queue, lease,
-measured execution and Stop implementation.
+Serve this repository on its own origin and run it under a dedicated system
+user, virtual environment, rootless container storage, broker socket, operator
+configuration and data directory. Do not replace the AgP or Playground service.
 
-The live standalone site is <https://agp.54.209.185.15.sslip.io/>.
-It uses real public cameras independently of robot execution. A user submits
-a task only on this site; AgP programs, observations, explicit experience reuse,
-runner identity and physical replay remain in its browser-scoped interface.
-This origin must run without `--memo-site`; MEMO is a separate application.
-
-## Native rootless service
-
-Use the rootless native Codex transport described in the rootless executor
-section of `docs/PLAYGROUND.md`. That transport is shared by both the standalone
-app and the optional packet-service entry point. For this website **omit
-`--worker`**:
+Production command (behind HTTPS):
 
 ```sh
-python -m agp_remote_yam \
-  --host 127.0.0.1 --port 8828 \
-  --public-origin https://your-agent-host.example \
-  --agent remote --data /var/lib/agp-remote-yam
+python -m agp_remote_yam --memo-site --host 127.0.0.1 --port 8831 \
+  --data /var/lib/memo-remote-yam --agent remote --model gpt-6-luna \
+  --memory-encoder semantic --robot-id robot-ba8413962083809c
 ```
 
-Keep the model harness in the account that is already authenticated. Generated
-code runs in a per-run rootless Podman container, with no host login, API key,
-user home or container-engine socket mounted. Pin the CLI and executor image
-to the same tested version. `run_root` in `/etc/agp-remote-codex.json` must equal
-the selected data directory's `runs` subdirectory.
+Check `python -m agp_remote_yam --help` for the current options. Preflight the rootless image with its production user namespace before accepting
+traffic, so first-use filesystem preparation cannot occur during a visitor run.
+The semantic encoder loads during server readiness. Persist the complete data directory:
+owner-scoped skillbook revisions, corrections, run workspaces and recordings.
+Human defaults stay in browser local storage; owner access uses a separate
+HttpOnly `memo_visitor` cookie. Corrections and refinement require same-origin
+ownership and are not shared between visitors.
 
-Start the app with its own systemd unit. A service using `ProtectHome=tmpfs`
-can bind only the worker UID's `/run/user/UID` directory for rootless Podman;
-all user homes remain hidden. Use a private temporary directory and permit
-writes only to the app data and its own runtime directory. Never add the worker
-to the Docker group. The operator supplies the exact UID, model broker account,
-engine image, pinned dependency path and private model cache.
+Set `AGP_REMOTE_CODEX_CONFIG` to a trusted host-only JSON file with the rootless
+engine, pinned image, model, allowed run root and private broker socket. The
+executor receives only its workspace, a restricted environment and broker
+connection. It never receives the normal model login or either site's data.
+The broker runs as the authenticated account and accepts only the MEMO worker
+UID. Pin native Codex0.159.0 and the matching public executor image. Use the
+normal operator model authentication; do not copy credentials into this repo.
 
-Put the service behind a separate Caddy site block:
+Give the worker write access only to its own data and rootless runtime. Permit
+its public dependency path read-only and keep Remote YAM pinned and clean.
+Retain queue, lease, calibration, contact, command validation and Stop behavior.
+Verify actual inference against mock arms before any physical trial:
 
-```caddyfile
-your-agent-host.example {
-    encode zstd gzip
-    header Strict-Transport-Security "max-age=31536000"
-    reverse_proxy 127.0.0.1:8828
-}
+```sh
+python scripts/verify_native_memo.py --data /path/to/isolated/verification-data
 ```
 
-Configure only this new hostname. Do not add this app's menus or proxy paths to
-an existing Playground origin. The `sslip.io` live hostname resolves the encoded
-server address; an operator-owned DNS name can point to the same service later.
+That script tests live-model correction delivery, generalized guidance and
+parameterized templates, later-run semantic retrieval and offline consolidation.
+It does not acquire a physical robot lease. A passing receipt is not physical
+acceptance. Then verify the deployed normal UI, live cameras, physical execution,
+retained replay, history, identity and both timing requirements using
+[the completion checklist](COMPLETION-CHECKLIST.md).
 
-## Verification and rollback
-
-Check HTTPS, `/api/config`, real camera playback, absence of MEMO controls and protocol files, editable
-runner identity, run history/replay, and an actual-model/mock-robot test before a physical
-trial. Check CSRF, ownership and Stop through the existing offline suite.
-Do not submit a physical robot task just to test a deployment.
-
-To withdraw this website, remove only its dedicated proxy site include,
-validate and reload Caddy, then stop/disable its own web unit. Keep run-data and any legacy skillbook backups. Other websites and the public robot API are independent.
-
-
-The native worker supports server-selected Astra, Sol and Luna profiles with supported Fast mode. The next physical candidate selects Luna with reasoning set to none; the public configuration labels the actual model. Model/effort cannot be overridden by a public prompt. It
-prepares its isolated executor and plans from explicitly labelled public,
-read-only observations while the existing queue prepares the robot. The arms
-may home in that interval. Only a matching, active, settled lease starts the
-robot bridge. A queued state read then returns fresh leased feedback;
-pre-admission motion requests are rejected rather than released later.
-The agent must compute motion targets from that fresh state, and request new
-images/depth whenever the changed pose or uncertainty requires them. No task
-script or startup movement is supplied by the host.
-
-Initial RGB views are fetched in parallel, independently of robot geometry preparation, with original images/metadata
-retained and bounded JPEG previews supplied directly to the model. The host's
-initial input manifest is outside the generated-code mount. Source timestamps
-preceding settlement are rejected on leased captures. Numeric depth remains
-available through the unchanged interface; RGB is not labelled RGB-D.
-
-The delayed-lease actual-model mock `32e2b9f89a1e4fdaaccaf6bc70f43f98`
-completed its first generated command at11.240 seconds, including a deliberate
-ten-second simulated queue wait. It made one state-relative move after
-admission and verified it. This is mock evidence, not a physical timing pass.
-A harder mock with a changed admission pose completed first movement in14.887 seconds with Astra; a controlled Sol comparison took19.340 seconds, so Astra is retained. The adapter suite passed85 tests in15.88 seconds. Review the
-[shared completion harness](COMPLETION-CHECKLIST.md) before any completion claim.
-
-### AgP-only deployment repair
-
-The correction from combined application `31b604f` makes pure Agent as Policy
-the default. Existing MEMO records stay on disk and are excluded from AgP history.
-Use an isolated release directory, install its wheel, atomically switch only
-`/opt/agp-remote-yam`, then restart the dedicated services as described below after checking for active
-runs. Roll back the wheel and symlink together. Preserve authentication,
-robot service and public Playground. Set `AGP_SOURCE_REVISION` to the deployed commit.
-
-Physical replay requires host `ffmpeg`/`ffprobe` and the existing public camera
-feed. The recorder is independent of the generated-code container and saves to
-the run's `recording/` directory. Owner checks protect video and byte-range
-playback. Missing footage is labelled unavailable, never replaced by mock video.
-Use per-executor cleanup; do not remove every Podman container on web-service stop.
-
-When the native protocol changes, deploy its matching client and broker together.
-After confirming no active AgP run, stop the web unit, install the verified wheel,
-switch the release link, restart `agp-codex-broker.service`, then start
-`agp-web.service`. Roll back both units with the previous wheel if startup fails.
-Authentication files and other services remain independent.
-
-Physical video is remuxed with `-c:v copy` to preserve the original encoded feed
-and avoid competing with worker startup for video-encoding CPU. The live source
-was verified as H.264,2560×1080,8 fps; a five-second copy produced a valid MP4.
-The native thread uses concise robot-policy instructions and a host-supplied
-`robot_api.py` wrapper around the unchanged authors' CLI. That wrapper contains
-no policy or motion targets; generated programs remain the runtime agent's work.
-Uncalibrated preparation views explicitly expose no end-effector pose or camera
-pose binding. Fresh geometry is prepared separately and remains mandatory for
-leased commands.
-
-Model profile configuration must agree in three places: web `--model`,
-`model` in `/etc/agp-remote-codex.json`, and private broker `--model` plus
-`--reasoning-effort`. The broker validates supported combinations and rejects
-client model overrides. The local defaults remain Astra/low.
-
-An initial Luna mock captured frames and moved before model inspection and is
-not accepted as evidence for the fresh-vision path. The stricter test
-`ac9325b271244dc6a68e288f9956dd07` inspected images first but took17.338 seconds.
-The staged-program test `928b06df33e44252850885315b839df2` drafted code during a
-ten-second simulated admission wait, viewed fresh post-admission top/wrist
-images at12.53 seconds, then completed its single generated mock movement
-at13.882 seconds. Fresh post-motion images and state were also checked. These
-remain mock results. Runtime logs now retain image-tool completion paths, so
-capture alone is distinguishable from image delivery to the model.
-
-The initial page includes its browser-specific CSRF/configuration as escaped,
-inert JSON, removing a configuration round trip. Identity/ownership and CSRF
-validation remain unchanged. Both HD camera feeds use a0.5-second HLS live
-buffer target; actual public-stream buffering still needs visual timing checks.
+Deploy immutable source revisions, report `AGP_SOURCE_REVISION`, validate the
+new HTTPS proxy configuration before reload, and roll back only this site's
+service and proxy entry. Do not restart unrelated integrations.

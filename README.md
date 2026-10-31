@@ -1,158 +1,63 @@
-# Agent as Policy on Remote YAM
+# MEMO on Remote YAM
 
-A standalone website that runs a coding agent against the public Remote YAM
-API. Give it a task and an optional goal image. The agent observes cameras and
-measured state, writes and executes Python, sends a robot command, checks the
-result, and revises its program until it finishes or the run ends.
+A standalone implementation of [MEMO: From Local Corrections to Generalized Skills](https://collab.me.vt.edu/memo/)
+with a runtime coding policy controlling the public BluPe Remote YAM API.
 
-This is an integration of the [Agent as Policy method](https://arxiv.org/abs/2609.12541),
-with the authors' unmodified file-protocol client. It replaces their local
-CAN/camera bridge with the public API. It does not reproduce the paper's full
-evaluation suite or claim its reported success rates.
+- Website: https://memo.54.209.185.15.sslip.io/
+- Source: https://github.com/andlyu/memo-remote-yam
+- Acceptance evidence: [shared completion harness](docs/COMPLETION-CHECKLIST.md)
 
-## Start locally
+The coding agent observes the real scene, writes and executes Python, checks
+measured results, and revises its program. Your corrections become generalized
+guidance; verified subtask programs can become parameterized skill templates.
+Later runs retrieve relevant lessons from the browser-owned skillbook.
+Skills are agent-authored and remain unverified until independently reviewed.
 
-Requires Python 3.11+, Git, and network access during setup. Real agent runs
-also require Codex CLI (tested with 0.157.0) and your normal Codex login.
+The page includes editable name/email confirmation, explicit Automated test
+identity, live cameras, corrections, retained physical replay, prior-run history,
+generated source and measured timing. **Refine skillbook** consolidates related
+lessons offline while preserving original source IDs and constraints. It creates
+no robot session and rejects every robot command. Stop always targets the
+active run even while you review a previous run.
 
-```sh
-./setup.sh
-./run.sh --demo
-```
+## Run locally
 
-Open <http://127.0.0.1:8797>. **Demo mode uses a scripted mock robot and the real public camera streams.
-It never calls a model or controls the physical robot.**
-
-The viewer preserves main observer, overhead, left wrist and right wrist.
-For fully offline camera fixtures, use `./run.sh --demo --synthetic-cameras`.
-See [camera sources and mapping](docs/CAMERAS.md).
-
-Test the real model with the mock robot:
+Python3.11+ is required. Install the clean pinned public runner first:
 
 ```sh
-codex login
-./run.sh --mock-robot --model gpt-6-astra
+python scripts/bootstrap.py
+python -m pip install -e '.[memo,test]'
+python -m agp_remote_yam --memo-site --memory-encoder semantic
 ```
 
-Run the real agent through the public robot API:
+The Python namespace `agp_remote_yam` is retained for compatibility with the
+public adapter. The package, repository, website, service, visitor cookie,
+robot workspaces, skillbook and broker configuration are independent of the
+Agent as Policy website. This application never changes Playground.
+
+Public hosting requires the isolated native worker. See [hosting](docs/HOSTING.md).
+Model credentials stay in the broker account; generated code runs in a rootless
+container with only its run workspace. No login, user home, engine socket or
+server credentials are mounted into the executor.
+
+## Explicit offline checks
 
 ```sh
-./run.sh --model gpt-6-astra
+python -m pytest -q
+python -m agp_remote_yam --demo --synthetic-cameras --memory-encoder lexical
+python -m agp_remote_yam --mock-robot --memo-site --memory-encoder semantic
 ```
 
-The website connects to `yam-1` at the configured public session API. Starting
-the website only serves the UI; clicking **Run Agent as Policy** joins the queue
-and takes a timed robot lease. Stop revokes that lease before terminating the
-agent. Use `--api`, `--robot-id`, `--port` and `--data` to select a deployment.
-Local mode runs as your logged-in user with Codex's workspace sandbox and is
-intended for a trusted operator.
+`--demo` uses a scripted agent and mock robot. `--mock-robot` uses the actual
+coding model with mock motion. Synthetic cameras need their explicit flag;
+otherwise the website displays real public cameras independently of execution.
+Neither mode establishes physical task success or a physical timing pass.
 
-## What is preserved
+## Method and boundaries
 
-```text
-Browser task + goal image
-  → isolated run workspace + real Codex process
-  → agent writes/runs Python and invokes upstream robot_client.py
-  → request/response files (left and right arm)
-  → API adapter: cameras / calibrated FK+IK / joint trajectories
-  → pinned Remote YAM RunnerController
-  → public queue, lease, measured completion and Stop
-  → fresh observations back to the agent
-```
-
-The agent remains the policy throughout the run. There is no fixed generated
-program that replaces its observe/program/act/revise loop. The UI shows agent
-messages, tool calls/results, generated files, confirmed runner identity and an agent-declared outcome. Physical runs retain the actual camera atlas for immediate and historical replay when the feed is available; replay failure is shown explicitly.
-Raw process events remain outside the browser workspace.
-
-Each run starts with the client, interface documentation, task, empty scratch
-folder and optional goal image. Programs and captures stay in that run. Notes
-and helpers saved under `scratch/experience/` are snapshotted after completion;
-select a prior run in **Experience** to seed a new run's `knowledge/` directory.
-Reuse is explicit and labelled agent-authored/unverified. A server restart marks
-unfinished runs interrupted and never resumes motion automatically.
-
-## Robot contract and differences from the paper
-
-- `state`, `frames`, `move_ee`, `move_joints`, `gripper`, `status`, `help` are
-  available through the original client. Both arms are supported sequentially. YAM-1 uses native-corrected joints;
-  RoboHouse uses its exact published original-encoder/model-correction binding.
-  Missing or contradictory calibration is rejected rather than guessed.
-  Poses use each arm's own base; quaternions are wxyz and joints are radians.
-- The API accepts 10 Hz joint waypoints. Cartesian commands use the pinned
-  runner's calibrated YAM FK/IK and joint/contact checks. Existing packet,
-  session, pacing, feedback and lease checks remain active.
-- A command returns only after matching measured, settled completion. A timed
-  out or failed execution is never automatically replayed.
-- Captures include actual image sizes, intrinsics, distortion, camera-to-base
-  poses, calibration identity/quality and source timestamps when available.
-  Wrist depth is numeric float32 optical Z in metres. Camera and joint streams
-  are **not hardware synchronized**. Missing depth produces an error.
-- Timed 50 Hz throwing programs, synchronized rig captures and the authors'
-  local motor bridge are not reproduced. The mock station has synthetic RGB
-  only and establishes no physical performance or RGB-D readiness.
-
-See [the agent interface](src/agp_remote_yam/assets/INTERFACE.md) and
-[references](docs/refs/INDEX.md). Dependencies are exact public source revisions
-in `dependency.lock.json`; the runner is a separate ignored checkout under
-`.deps/`, with no dependency on the private BluPe repository.
-
-## Hosting
-
-The independent website is **<https://agp.54.209.185.15.sslip.io/>**.
-It is deployed directly from this repository, with its own service, HTTPS origin,
-run interface and saved workspaces. No change to the BluPe Playground website is needed.
-
-Run the standalone app on loopback behind its own HTTPS reverse proxy, using
-`--agent remote` for the rootless native coding environment. The model harness
-uses the existing authenticated server account; generated code receives no host
-login, API key, user home or container-engine socket. The pinned public Remote
-YAM dependency retains queue, lease, measured execution and Stop behavior.
-
-See [independent hosting and rollback](docs/HOSTING.md). Live cameras and the
-website acceptance status is recorded in the shared completion harness. Actual-model checks use a mock robot and do not establish physical task success. The optional packet-service code is a
-separate entry point and is not used for this website.
-
-## Tests
-
-```sh
-.venv/bin/python -m pip install -e '.[test]'
-.venv/bin/python -m pytest -q
-```
-
-Tests use no physical robot or paid model. They cover the original client,
-exactly-once bridge handling, FK/IK frames and units, completion matching,
-non-replay after failure, cancellation, browser ownership/CSRF, workspace
-symlinks and explicit experience reuse. `--mock-robot` additionally permits a
-manual real-model smoke test without opening a robot session.
-After building the worker image, run `.venv/bin/python scripts/smoke_container.py`
-to check container IPC with a scripted agent and no model credential.
-
-Upstream client attribution and licenses are in [NOTICE](NOTICE). This
-integration is independently maintained; upstream authors have not endorsed it.
-
-## Integration completion harness
-
-This standalone integration uses the shared BLUPE Remote Bots
-[research integration completion checklist](docs/COMPLETION-CHECKLIST.md).
-Its evidence audit distinguishes offline tests from physical execution, both
-15-second motion requirements, runner identity and retained physical replay.
-Unmet or unverified criteria block declaring the integration complete.
-
-## Method separation
-
-The default application at the AgP hostname runs **Agent as Policy only**. New
-workspaces contain no MEMO client, protocol or memory bridge. The runtime does
-not construct a skillbook or supply memory instructions; the API rejects MEMO
-requests. Explicit experience reuse remains part of AgP and is selected per run.
-
-Legacy MEMO source and records are preserved for its separate application. Only
-an explicit `--memo-site` starts that application, on its own origin and data
-directory. Never use that flag in the AgP web service. The optional packet worker
-is also a separate entry point. Isolation is covered by acceptance tests.
-
-Human visitors confirm editable name/email; returning visitors can reuse this
-browser's saved values. Operator automation opens `/?automated=1` and is labelled
-`Automated` with no personal email. Each run retains method, runner, browser
-entry/click timestamps, server arrival, and measured physical-motion evidence.
-Those timestamps do not replace the harness's timed visual verification.
+[Method notes](docs/METHOD.md) describe correction delivery, semantic retrieval,
+generalization, consolidation, provenance and the changes needed for YAM.
+The authors' robot client is preserved unchanged with upstream attribution.
+The separately installed Remote YAM dependency stays clean and pinned; its
+queue, lease, calibrated geometry, contact checks and Stop remain authoritative.
+A timed-out movement is never automatically replayed.

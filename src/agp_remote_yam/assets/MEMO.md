@@ -18,7 +18,13 @@ Do not use simulator object truth, Panda dimensions or historical coordinates.
    contradictory observations or corrections should be represented explicitly.
 4. After observing evidence of subtask success, generalize the code into one
    parameterized function; save with kind template, content, and evidence paths
-   from frames/ or scratch/. Literal XYZ triplets are refused. Never label motion
+   from frames/ or scratch/. The content field must contain the actual Python
+   function source, not prose, a filename, JSON, or a Markdown code fence. Save
+   the function in scratch/skill.py, then construct the request with Python:
+   `payload = {"kind": "template", "action": action, "content": Path("scratch/skill.py").read_text(), "evidence": ["scratch/skill.py", capture_path]}`.
+   Submit json.dumps(payload) to memo_client.py remember using subprocess.run.
+   Check ok=true; a rejected save did not create a template. Correct the source
+   or request without replaying the motion. Literal XYZ triplets are refused. Never label motion
    completion or silence as task success. Saved skills are agent-authored and
    unverified, including when the run uses a mock robot.
 5. For redundant/conflicting entries, generate a consolidated guidance/template

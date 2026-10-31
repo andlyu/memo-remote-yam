@@ -66,7 +66,7 @@ class RunManager:
             raise FileNotFoundError("This record belongs to the separate legacy application")
         return directory
 
-    def start(self, task, owner, *, duration=300, parent=None, goal=None, memo=False, memory_version=None,
+    def start(self, task, owner, *, duration=300, parent=None, goal=None, memo=None, memory_version=None,
               runner=None, timing=None, robot_id=None):
         robot_id = robot_id or self.settings.robot_id
         if robot_id not in {self.settings.robot_id, *ROBOTS}:
@@ -75,6 +75,10 @@ class RunManager:
             raise ValueError("Enter a task of 1–4,000 characters")
         if type(duration) is not int or not 60 <= duration <= 600:
             raise ValueError("Run duration must be 60–600 seconds")
+        if memo is None:
+            memo = self.settings.memo_site
+        if self.settings.memo_site and memo is False:
+            raise ValueError("This website runs MEMO; learning cannot be silently disabled")
         if type(memo) is not bool:
             raise ValueError("MEMO must be on or off")
         if not self.settings.memo_site and (memo or memory_version is not None):
@@ -101,11 +105,11 @@ class RunManager:
                 memory = MemoryChannel(self.skillbook, owner, directory, journal, enabled=memo, version=memory_version)
             runtime.memory = memory
             self.store.update(directory, owner=owner, mode="offline_mock" if self.settings.offline else "physical_api",
-                              duration_s=duration, approach="Agent as Policy + MEMO" if memo else APPROACH,
+                              duration_s=duration, approach="MEMO" if memo else APPROACH,
                               runner=runner, timing=timing,
                               robot_id=robot_id,
                               **(dict(memo_enabled=memo, memory_version=memory.version) if memory else {}))
-            journal.add("run_requested", "Agent as Policy run requested", approach="Agent as Policy + MEMO" if memo else APPROACH,
+            journal.add("run_requested", "MEMO run requested" if memo else "Agent as Policy run requested", approach="MEMO" if memo else APPROACH,
                         runner=runner, physical=not self.settings.offline, timing=timing)
             try:
                 runtime.check_available()
@@ -249,6 +253,11 @@ class RunManager:
         value.pop("owner", None)
         with self.lock:
             context = self.active.get(identity)
+        if context is None:
+            # Completion persists metadata before removing the active context.
+            # Refresh a read that straddled that transition.
+            value = json.loads((directory / "run.json").read_text())
+            value.pop("owner", None)
         if context:
             events = context["journal"].after(cursor)
             first = next((e for e in context["journal"].after() if e["kind"] == "physical_motion_measured"), None)

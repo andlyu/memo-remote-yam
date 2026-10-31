@@ -11,13 +11,16 @@ from .workspace import Workspace
 
 
 class FileBridge:
-    def __init__(self, workspace, backend, journal, stopped, memory=None, *, admitting=False, motion_ready=None):
+    def __init__(self, workspace, backend, journal, stopped, memory=None, *, admitting=False, motion_ready=None, memory_only=False, robot_only=False):
         self.workspace = Workspace(workspace)
         self.backend, self.journal, self.stopped = backend, journal, stopped
         self.thread = None
         self.memory = memory
         self.admitting = admitting
         self.motion_ready = motion_ready
+        if memory_only and robot_only:
+            raise ValueError("Choose one bridge channel set")
+        self.memory_only, self.robot_only = memory_only, robot_only
 
     def start(self):
         # Only read requests may wait across admission. A pre-lease action must
@@ -32,8 +35,8 @@ class FileBridge:
         consumed = set()
         while not self.stopped.is_set():
             progressed = False
-            channels = [("left", "bridge"), ("right", "bridge_right")]
-            if self.memory is not None:
+            channels = [] if self.memory_only else [("left", "bridge"), ("right", "bridge_right")]
+            if self.memory is not None and not self.robot_only:
                 channels.append(("memo", "bridge_memo"))
             for arm, folder in channels:
                 try:

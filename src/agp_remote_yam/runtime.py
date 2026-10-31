@@ -72,6 +72,11 @@ class AgentRuntime:
         if self.mode != "remote" or self.thread is not None:
             return
         Workspace(self.workspace).json("RESULT_SCHEMA.json", RESULT_SCHEMA)
+        if self.memory is not None:
+            # Retrieval is independent of the robot's admission and motion gate.
+            self.memory_bridge = FileBridge(self.workspace, None, self.journal,
+                self.stopped, self.memory, memory_only=True)
+            self.memory_bridge.start()
         self.thread = threading.Thread(target=self._run, args=(task,), name="agp-coding-agent", daemon=True)
         self.thread.start()
 
@@ -101,7 +106,8 @@ class AgentRuntime:
                     raise RuntimeError("Coding worker did not accept fresh leased images")
         self.bridge = FileBridge(self.workspace, backend, self.journal, self.stopped, self.memory,
                                  admitting=self.mode == "remote",
-                                 motion_ready=self.leased_reviewed.is_set if handoff else None)
+                                 motion_ready=self.leased_reviewed.is_set if handoff else None,
+                                 robot_only=hasattr(self, "memory_bridge"))
         self.backend = backend
         self.bridge.start()
         self.backend_ready.set()
@@ -228,7 +234,7 @@ class AgentRuntime:
         env = {key: value for key, value in os.environ.items()
                if key in ("HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TERM", "TMPDIR", "CODEX_HOME",
                           "CODEX_API_KEY", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS",
-                          "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS")}
+                          "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "AGP_REMOTE_CODEX_CONFIG")}
         env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + os.environ.get("PATH", "")
         if self.mode == "remote":
             env.pop("CODEX_API_KEY", None)

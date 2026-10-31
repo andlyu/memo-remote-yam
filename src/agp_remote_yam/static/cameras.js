@@ -28,12 +28,12 @@
       target.getContext("2d", {alpha:false}).drawImage(source, ...rect, 0, 0, width, height);
     }
     // Public snapshots also keep the arms current when the video publisher is
-    // delayed. One request per view may be in flight, at most 2.5 fps. These
+    // delayed. One request per view may be in flight, at most 1 fps. These
     // independent views are labelled as such; model captures stay separate.
     let snapshots = true;
     function snapshot(tile, now) {
-      if(tile.role==="observer"&&config.robot_id==="robot-ba8413962083809c")return;
-      if (tile.loading || now-tile.requestedAt < 400) return;
+      if(tile.role==="observer"&&config.robot_id==="robot-ba8413962083809c"&&config.camera_source!=="synthetic")return;
+      if (tile.loading || now-tile.requestedAt < 1000) return;
       tile.loading=true;tile.requestedAt=now;
       const image = new Image();
       image.onload = () => {

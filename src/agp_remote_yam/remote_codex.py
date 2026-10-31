@@ -110,7 +110,7 @@ def main():
     parser.add_argument('--cd', required=True)
     parser.add_argument('prompt_source', choices=['-'])
     args = parser.parse_args()
-    settings = json.loads(Path('/etc/agp-remote-codex.json').read_text())
+    settings = json.loads(Path(os.environ.get('AGP_REMOTE_CODEX_CONFIG', '/etc/agp-remote-codex.json')).read_text())
     if args.model != settings['model']:
         raise ValueError('Remote coding model is fixed by the server')
     workspace = workspace_path(args.cd, settings['run_root'])

@@ -24,3 +24,9 @@ before final handoff. Unmet or unverified requirements remain unchecked and
 block a completion claim; mock control tests do not satisfy physical-motion or
 footage requirements. Every Run click must be checked against its 15-second
 physical-motion requirement, with any exception specifically research-grounded.
+
+This checkout is the independent MEMO application, published as
+`andlyu/memo-remote-yam` and hosted at `memo.54.209.185.15.sslip.io`.
+Never replace the separate Agent as Policy repository, service, broker or origin.
+Keep MEMO enabled and named in this site's runs, and keep offline refinement
+separate from physical runs. Use the owner-protected skillbook and replay paths.

@@ -41,14 +41,14 @@ class App:
             model=self.settings.model, mode="offline_mock" if self.settings.offline else "physical_api",
             agent="scripted" if self.settings.demo else self.settings.agent_mode, remote_yam_revision=REMOTE_YAM_COMMIT,
             camera_source=self.settings.camera_source, camera_roles=list(CAMERA_ROLES), video_stream=video_stream,
-            agp_reference_revision=UPSTREAM_AGP_COMMIT, approach="Agent as Policy + MEMO" if self.settings.memo_site else APPROACH,
-            server_time=__import__("time").time(), source_repository="https://github.com/andlyu/agp-remote-yam",
+            agp_reference_revision=UPSTREAM_AGP_COMMIT, approach="MEMO" if self.settings.memo_site else APPROACH,
+            server_time=__import__("time").time(), source_repository="https://github.com/andlyu/memo-remote-yam" if self.settings.memo_site else "https://github.com/andlyu/agp-remote-yam",
             source_revision=os.environ.get("AGP_SOURCE_REVISION", "development"))
 
     def identity(self, headers):
         cookie = SimpleCookie()
         cookie.load(headers.get("cookie", ""))
-        value = cookie.get("agp_visitor")
+        value = cookie.get("memo_visitor" if self.settings.memo_site else "agp_visitor")
         visitor = value.value if value else ""
         if len(visitor) != 64 or any(c not in "0123456789abcdef" for c in visitor):
             visitor = secrets.token_hex(32)
@@ -61,6 +61,9 @@ class App:
             while True:
                 message = await receive()
                 if message["type"] == "lifespan.startup":
+                    book = self.manager.skillbook
+                    if book is not None and book.encoder.mode == "semantic":
+                        await asyncio.to_thread(book.encoder.encode, "GENERAL")
                     await send({"type": "lifespan.startup.complete"})
                 elif message["type"] == "lifespan.shutdown":
                     await asyncio.to_thread(self.manager.close)
@@ -125,7 +128,8 @@ class App:
                     else:
                         media_headers.append((b"content-range", f"bytes {start}-{end}/{len(result)}".encode()))
                         result, status = result[start:end+1], 206
-        cookie = f"agp_visitor={visitor}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000"
+        cookie_name = "memo_visitor" if self.settings.memo_site else "agp_visitor"
+        cookie = f"{cookie_name}={visitor}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000"
         if self.public_origin and self.public_origin.startswith("https://"):
             cookie += "; Secure"
         await send(dict(type="http.response.start", status=status, headers=[
@@ -146,7 +150,7 @@ class App:
             if self.settings.memo_site and name in ("index.html", "app.js"):
                 name = "memo-" + name
             data = files("agp_remote_yam").joinpath("static", name).read_bytes()
-            if name == "index.html":
+            if name in ("index.html", "memo-index.html"):
                 seed = json.dumps(self.configuration(robot_id, csrf)).replace("<", "\\u003c")
                 data = data.replace(b"<!--INITIAL_CONFIG-->",
                     ('<script id="initial-config" type="application/json">'+seed+'</script>').encode())
@@ -184,11 +188,36 @@ class App:
                 data = source.fetch(role, self.settings.origin.rstrip("/") + "/v1/robots/" +
                     quote(robot_id, safe="") + "/cameras/" + role + ".jpg").jpeg
             return 200, "image/jpeg", data
+        if path == "/api/skillbook/jobs" and method == "GET":
+            if not self.settings.memo_site:
+                raise FileNotFoundError()
+            with self.manager.lock:
+                active = set(self.manager.active)
+            return 200, "application/json", dict(jobs=[
+                dict({k:v for k,v in row.items() if k != "owner"}, active=row["id"] in active)
+                for row in self.manager.store.list()
+                if row.get("owner") == owner and row.get("job_kind") == "skillbook_refinement"])
+        if path == "/api/skillbook/jobs" and method == "POST":
+            from .refinement import start_refinement
+            value = json.loads(body)
+            return 202, "application/json", dict(id=start_refinement(self.manager, owner, value.get("runner")))
+        if path.startswith("/api/skillbook/jobs/"):
+            if not self.settings.memo_site:
+                raise FileNotFoundError()
+            from .refinement import detail
+            parts = path.split("/")
+            job = detail(self.manager, parts[4], owner)
+            if len(parts) == 5 and method == "GET":
+                return 200, "application/json", job
+            if len(parts) == 6 and parts[5] == "stop" and method == "POST":
+                self.manager.stop(parts[4], owner)
+                return 200, "application/json", dict(status="stop_requested")
+            raise FileNotFoundError()
         if path == "/api/runs" and method == "GET":
             with self.manager.lock:
                 active = set(self.manager.active)
             rows = [dict({k: v for k, v in row.items() if k != "owner"}, active=row["id"] in active)
-                    for row in self.manager.store.list() if row.get("owner") == owner and
+                    for row in self.manager.store.list() if row.get("owner") == owner and not row.get("job_kind") and
                     (self.settings.memo_site or row.get("approach") == APPROACH and not row.get("memo_enabled"))]
             return 200, "application/json", dict(runs=rows)
         if path == "/api/memories" and method == "GET":
@@ -198,7 +227,7 @@ class App:
                 encoder=self.manager.skillbook.encoder.identity, memories=self.manager.skillbook.list(owner))
         if path == "/api/runs" and method == "POST":
             value = json.loads(body)
-            runner = runner_identity(value.get("runner"), automated_default=self.settings.memo_site)
+            runner = runner_identity(value.get("runner"))
             goal = None
             if value.get("goal_image"):
                 encoded = value["goal_image"]
@@ -213,7 +242,7 @@ class App:
                 image.convert("RGB").save(target, "PNG")
                 goal = target.getvalue()
             identity = self.manager.start(value.get("task"), owner, duration=value.get("duration_s", 300),
-                parent=value.get("experience_run") or None, goal=goal, memo=value.get("memo", False),
+                parent=value.get("experience_run") or None, goal=goal, memo=value.get("memo", self.settings.memo_site),
                 memory_version=value.get("memory_version"), runner=runner, timing=value.get("timing"),
                 robot_id=value.get("robot_id"))
             return 202, "application/json", dict(id=identity)

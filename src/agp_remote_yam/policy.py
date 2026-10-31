@@ -36,7 +36,7 @@ class AgPPolicy:
 
     def public_config(self):
         return dict(provider=self.provider_name, model=self.runtime.model,
-                    display_name="Agent as Policy", runtime=self.runtime.state,
+                    display_name="MEMO" if self.runtime.memory is not None else "Agent as Policy", runtime=self.runtime.state,
                     agent_declared_outcome=self.runtime.outcome)
 
     def infer(self, *_):

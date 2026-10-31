@@ -5,12 +5,12 @@ from .web import App
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Agent as Policy on Remote YAM")
+    parser = argparse.ArgumentParser(description="MEMO on Remote YAM — corrections and generalized skills")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8797)
     parser.add_argument("--data", type=Path, default=Path("data"))
     parser.add_argument("--api", default=Settings.origin)
-    parser.add_argument("--robot-id", default="yam-1")
+    parser.add_argument("--robot-id", default="robot-ba8413962083809c")
     parser.add_argument("--model", default="gpt-6-astra")
     parser.add_argument("--agent", choices=("codex", "docker", "remote"), default="codex")
     parser.add_argument("--codex", default="codex")
@@ -18,7 +18,7 @@ def main():
     parser.add_argument("--synthetic-cameras", action="store_true", help="Explicit offline camera fixtures for tests; default cameras are the public API feeds")
     parser.add_argument("--mock-robot", action="store_true", help="Use the real coding agent with an offline mock station; model usage, no physical robot")
     parser.add_argument("--public-origin", help="Canonical HTTPS origin when serving a public website")
-    parser.add_argument("--memo-site", action="store_true", help="Explicit separate MEMO application; never enable on the Agent as Policy origin")
+    parser.add_argument("--memo-site", action="store_true", default=True, help="Explicit separate MEMO application; never enable on the Agent as Policy origin")
     parser.add_argument("--memory-encoder", choices=("semantic", "lexical"), default="semantic",
                         help="Semantic MiniLM retrieval by default; lexical hashing is for explicit offline fixtures")
     parser.add_argument("--worker", action="store_true", help="Serve the authenticated Playground packet worker; no robot session is created")
