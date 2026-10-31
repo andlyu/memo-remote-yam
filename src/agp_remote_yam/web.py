@@ -244,7 +244,7 @@ class App:
             identity = self.manager.start(value.get("task"), owner, duration=value.get("duration_s", 300),
                 parent=value.get("experience_run") or None, goal=goal, memo=value.get("memo", self.settings.memo_site),
                 memory_version=value.get("memory_version"), runner=runner, timing=value.get("timing"),
-                robot_id=value.get("robot_id"))
+                robot_id=value.get("robot_id"), execution_mode=value.get("execution_mode"))
             return 202, "application/json", dict(id=identity)
         if path.startswith("/api/runs/"):
             parts = path.split("/")

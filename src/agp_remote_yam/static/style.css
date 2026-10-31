@@ -33,3 +33,16 @@ aside h1{font-size:26px;letter-spacing:-.5px}.identity-grid{display:grid;grid-te
 .memo-site input:not([type=file]),.memo-site textarea,.memo-site select{font-size:16px}
 .memo-site .memory-tools button,.memo-site .memory-tools summary{min-height:44px}
 }
+
+@media(min-width:651px) and (max-height:800px){
+.memo-site aside{padding-top:16px}
+.memo-site aside h1{font-size:24px;margin:6px 0 12px}
+.memo-site .intro{line-height:1.4;margin-bottom:14px}
+.memo-site aside label{margin-bottom:6px}
+.memo-site #robot-select{margin-bottom:14px}
+.memo-site aside textarea{min-height:80px;margin-bottom:14px}
+.memo-site #runner-fields{margin-top:10px}
+.memo-site #runner-fields input{padding:8px;margin-bottom:8px}
+.memo-site #runner-fields legend{margin-bottom:8px}
+.memo-site .primary{margin-top:14px}
+}

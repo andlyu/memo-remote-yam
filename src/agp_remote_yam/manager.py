@@ -67,7 +67,7 @@ class RunManager:
         return directory
 
     def start(self, task, owner, *, duration=300, parent=None, goal=None, memo=None, memory_version=None,
-              runner=None, timing=None, robot_id=None):
+              runner=None, timing=None, robot_id=None, execution_mode=None):
         robot_id = robot_id or self.settings.robot_id
         if robot_id not in {self.settings.robot_id, *ROBOTS}:
             raise ValueError("Choose a configured YAM station")
@@ -84,6 +84,9 @@ class RunManager:
         if not self.settings.memo_site and (memo or memory_version is not None):
             raise ValueError("This website runs Agent as Policy only. MEMO belongs on its separate website.")
         runner = runner_identity(runner, automated_default=True)
+        execution_mode = execution_mode or ("unattended_test" if runner["kind"] == "automated" else "interactive")
+        if execution_mode not in ("interactive", "automated_test", "unattended_test"):
+            raise ValueError("Choose a supported execution mode")
         timing = run_timing(timing)
         if parent:
             self.owned(parent, owner)
@@ -106,11 +109,11 @@ class RunManager:
             runtime.memory = memory
             self.store.update(directory, owner=owner, mode="offline_mock" if self.settings.offline else "physical_api",
                               duration_s=duration, approach="MEMO" if memo else APPROACH,
-                              runner=runner, timing=timing,
+                              runner=runner, timing=timing, execution_mode=execution_mode,
                               robot_id=robot_id,
                               **(dict(memo_enabled=memo, memory_version=memory.version) if memory else {}))
             journal.add("run_requested", "MEMO run requested" if memo else "Agent as Policy run requested", approach="MEMO" if memo else APPROACH,
-                        runner=runner, physical=not self.settings.offline, timing=timing)
+                        runner=runner, execution_mode=execution_mode, physical=not self.settings.offline, timing=timing)
             try:
                 runtime.check_available()
             except Exception as exc:

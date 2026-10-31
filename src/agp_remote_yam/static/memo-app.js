@@ -54,7 +54,7 @@ async function poll() {
     if(controlled.active)activeRun=controlled.id;
     else if(terminal.has(controlled.status)&&activeRun===controlled.id)activeRun=null;
 
-    $("run-attribution").textContent=(run.approach||"MEMO")+" · "+(run.runner?.name||"Unattributed legacy run")+" · "+(run.robot_id||config.robot_id)+" · "+displayStatus(run);
+    $("run-attribution").textContent=(run.approach||"MEMO")+" · "+(run.runner?.name||"Unattributed legacy run")+" · "+(run.robot_id||config.robot_id)+" · "+(run.execution_mode||"interactive").replaceAll("_"," ")+" · "+displayStatus(run);
     $("run-timing").textContent=timingLabel(run);
     renderReplay(run);
     renderMemoryContext(run, finished);
@@ -71,7 +71,7 @@ async function poll() {
 $("task-form").addEventListener("submit",async event=>{
   event.preventDefault();error("");$("run").disabled=true;$("phase").textContent="Submitting";$("run-progress").hidden=false;$("run-progress").textContent="Submitting your task · joining the robot queue and preparing the coding agent.";
   try{let goal=null;const file=$("goal").files[0];if(file)goal=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
-    const run=await api("/api/runs",{task:$("task").value,duration_s:Number($("duration").value),experience_run:$("experience").value||null,goal_image:goal,memo:true,robot_id:config.robot_id,runner:runner(),timing:{page_entered_at:performance.timeOrigin/1000,run_clicked_at:Date.now()/1000}});saveIdentity();activeRun=run.id;clearRun(run.id);$("stop").disabled=false;$("robot-select").disabled=true;await poll();history().catch(exc=>error(exc.message));
+    const run=await api("/api/runs",{task:$("task").value,duration_s:Number($("duration").value),experience_run:$("experience").value||null,goal_image:goal,memo:true,robot_id:config.robot_id,runner:runner(),execution_mode:verification?"automated_test":automated?"unattended_test":"interactive",timing:{page_entered_at:performance.timeOrigin/1000,run_clicked_at:Date.now()/1000}});saveIdentity();activeRun=run.id;clearRun(run.id);$("stop").disabled=false;$("robot-select").disabled=true;await poll();history().catch(exc=>error(exc.message));
   }catch(exc){error(exc.message);$("run-progress").textContent="Task submission failed · correct the error below and try Run again.";$("run").disabled=!!activeRun||memoryJobActive;}
 });
 $("stop").onclick=async()=>{if(!activeRun)return;const target=activeRun;$("stop").disabled=true;try{await api("/api/runs/"+target+"/stop",{});await poll();}catch(exc){error(exc.message);}};
@@ -89,10 +89,11 @@ async function station(){
  catch{$("station-state").textContent="Robot connection could not be checked";}finally{checkingStation=false;}
 }
 const automated=new URLSearchParams(location.search).get("automated")==="1";
+const verification=new URLSearchParams(location.search).get("verification")==="1";
 function runner(){return automated?{kind:"automated",name:"Automated"}:{kind:"human",name:$("runner-name").value.trim(),email:$("runner-email").value.trim()};}
 function saveIdentity(){if(!automated)try{localStorage.setItem("memo-runner",JSON.stringify(runner()));}catch{}}
 function initIdentity(){
- $("runner-fields").hidden=automated;$("automated-runner").hidden=!automated;
+ $("runner-fields").hidden=automated;$("verification-note").hidden=!verification;$("automated-runner").hidden=!automated;
  for(const id of ["runner-name","runner-email"])$(id).required=!automated;
  if(!automated)try{const prior=JSON.parse(localStorage.getItem("memo-runner")||"null");if(prior){$("runner-name").value=prior.name||"";$("runner-email").value=prior.email||"";}}catch{}
 }

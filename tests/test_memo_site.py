@@ -148,3 +148,19 @@ def test_template_rejection_explains_the_required_code_and_preserves_memory(tmp_
         book.add('owner',action='MOVE(joint)',scene='',kind='template',
                  content='Parameterized MOVE(joint) template: add delta to joint0=0.02.',run_id='fixture')
     assert book.version()==0 and book.list('owner')==[]
+
+
+def test_verification_mode_retains_the_confirmed_human_identity(tmp_path):
+    app=App(Settings(data=tmp_path,demo=True,memo_site=True))
+    _,cookie,config=request(app,'/api/config')
+    body={'task':'Mock verification attribution','duration_s':60,
+          'runner':{'kind':'human','name':'Confirmed Tester','email':'tester@example.com'},
+          'execution_mode':'automated_test'}
+    status,_,result=request(app,'/api/runs','POST',body,cookie=cookie,csrf=config['csrf'])
+    assert status==202
+    value=wait_run(app,result['id'],cookie)
+    assert value['runner']['kind']=='human' and value['runner']['name']=='Confirmed Tester'
+    assert value['execution_mode']=='automated_test' and value['approach']=='MEMO'
+    body['execution_mode']='unrecognised'
+    assert request(app,'/api/runs','POST',body,cookie=cookie,csrf=config['csrf'])[0]==400
+    app.manager.close()
