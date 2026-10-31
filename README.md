@@ -6,6 +6,7 @@ with a runtime coding policy controlling the public BluPe Remote YAM API.
 - Website: https://memo.54.209.185.15.sslip.io/
 - Source: https://github.com/andlyu/memo-remote-yam
 - Acceptance evidence: [shared completion harness](docs/COMPLETION-CHECKLIST.md)
+- Agent workflow: [repo-local harness contract](docs/BLUPE-HARNESS-CONTRACT.md)
 
 The coding agent observes the real scene, writes and executes Python, checks
 measured results, and revises its program. Your corrections become generalized
