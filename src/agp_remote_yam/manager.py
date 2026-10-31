@@ -161,9 +161,6 @@ class RunManager:
             policy = AgPPolicy(runtime, factory, journal)
             policy.physical = not self.settings.offline
             journal.add("lifecycle", "Joining the mock queue" if self.settings.offline else "Joining the public robot queue")
-            monitor = api.get_robot_observation(robot_id)
-            controller.update_monitor_observation(monitor)
-            controller.join_and_run(policy, task, run_duration_s=duration)
             if runtime.mode == "remote":
                 def prepare_backend():
                     try:
@@ -173,14 +170,27 @@ class RunManager:
                 threading.Thread(target=prepare_backend, name="agp-calibration", daemon=True).start()
                 def prime():
                     try:
+                        started = time.monotonic()
+                        monitor = api.get_robot_observation(robot_id)
+                        if context["stopped"].is_set() or runtime.finished.is_set():
+                            return
                         from .observation import ScenePreview
                         preview = factory(policy) if self.settings.offline else ScenePreview(
                             self.settings.origin, robot_id, directory / "workspace", policy, journal)
                         runtime.prime(preview, monitor.get("observation", monitor.get("payload", monitor)))
+                        journal.add("worker", "Read-only planning telemetry ready",
+                                    duration_s=round(time.monotonic()-started, 3))
                     except Exception as exc:
                         journal.add("worker", "Read-only pre-admission observations unavailable",
                                     error_type=type(exc).__name__)
                 threading.Thread(target=prime, name="agp-initial-scene", daemon=True).start()
+            else:
+                monitor = api.get_robot_observation(robot_id)
+                controller.update_monitor_observation(monitor)
+            # Read-only planning and calibration run alongside queue admission.
+            # The unchanged controller obtains its own fresh safety/lease
+            # context; late planning telemetry must never overwrite that state.
+            controller.join_and_run(policy, task, run_duration_s=duration)
             if context["stopped"].is_set():
                 controller.stop("user_requested")
             previous = None
