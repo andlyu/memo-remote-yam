@@ -34,11 +34,14 @@ Retain queue, lease, calibration, contact, command validation and Stop behavior.
 Verify actual inference against mock arms before any physical trial:
 
 ```sh
-python scripts/verify_native_memo.py --data /path/to/isolated/verification-data
+python scripts/verify_native_memo.py --data /path/to/isolated/verification-data \
+  --runner-name "$CONFIRMED_RUNNER_NAME" --runner-email "$CONFIRMED_RUNNER_EMAIL"
 ```
 
 That script tests live-model correction delivery, generalized guidance and
 parameterized templates, later-run semantic retrieval and offline consolidation.
+The initiating human stays the runner; execution mode is `automated_test`.
+Keep the receipt private because it retains the confirmed contact fields.
 It does not acquire a physical robot lease. A passing receipt is not physical
 acceptance. Then verify the deployed normal UI, live cameras, physical execution,
 retained replay, history, identity and both timing requirements using
