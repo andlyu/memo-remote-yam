@@ -7,6 +7,10 @@ Do not use simulator object truth, Panda dimensions or historical coordinates.
 1. Retrieve context: `python memo_client.py context '{"action":"PICK(block)","scene":"block towel"}'`.
    Use returned guidance and templates as hypotheses, recomputing all geometry
    from this run. MEMO_CONTEXT.json records the exact retrieval version and IDs.
+   `available_actions` lists this owner's learned action labels at this run's
+   pinned version. Choose a relevant label from that list when one fits the
+   current subtask; query it before moving. GENERAL is for general guidance:
+   an empty GENERAL result does not mean the skillbook has no relevant lessons.
 2. Observe/program/act/check using the original robot client. Every state/frames
    response also includes new owner corrections. A correction changes the next
    decision once; it does not request repeating a relative motion. Poll context

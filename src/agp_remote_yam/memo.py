@@ -285,7 +285,10 @@ class MemoryChannel:
                 action_parts(self.action, self.scene)
                 self.retrieved = self.book.retrieve(self.namespace, self.action, self.scene, version=self.version) if self.enabled else []
                 result = dict(enabled=self.enabled, version=self.version, encoder=self.book.encoder.identity,
-                              action=self.action, scene=self.scene, memories=self.retrieved, corrections=self.updates(deliver=True))
+                              action=self.action, scene=self.scene, memories=self.retrieved,
+                              available_actions=sorted({row['action'] for row in self.book.list(
+                                  self.namespace, version=self.version)}) if self.enabled else [],
+                              corrections=self.updates(deliver=True))
                 self.workspace.json("MEMO_CONTEXT.json", result)
                 self.journal.add("memory_retrieved", f"Retrieved {len(self.retrieved)} memories for {self.action}",
                                  memory_ids=[r["id"] for r in self.retrieved], version=self.version, action=self.action)

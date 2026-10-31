@@ -71,6 +71,22 @@ def test_disabled_memory_delivers_corrections_without_learning(tmp_path):
         channel.command('remember', dict(content='something'))
 
 
+def test_initial_context_exposes_owner_pinned_action_catalog(tmp_path):
+    memory = book(tmp_path)
+    add(memory, action='ADJUST(LEFT JOINT0)', scene='left arm measured state')
+    add(memory, owner='bob', action='PRIVATE(other)')
+    _, directory = RunStore(tmp_path / 'runs').create('adjust a joint')
+    channel = MemoryChannel(memory, 'alice', directory, Journal(directory))
+    add(memory, action='FUTURE(task)')
+    context = channel.command('context', {})
+    assert context['memories'] == []  # GENERAL alone misses action-specific lessons.
+    assert context['available_actions'] == ['ADJUST(LEFT JOINT0)']
+    selected = channel.command('context', dict(action=context['available_actions'][0]))
+    assert len(selected['memories']) == 1
+    channel.enabled = False
+    assert channel.command('context', {})['available_actions'] == []
+
+
 def test_templates_need_parameterized_function_and_run_evidence(tmp_path):
     memory = book(tmp_path)
     _, directory = RunStore(tmp_path / 'runs').create('task')

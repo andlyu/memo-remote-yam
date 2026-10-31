@@ -91,7 +91,7 @@ try:
         'one program changing left joint0 by +0.02 radians once. Retain all other measured targets. '
         'Read fresh state inside the movement program; inspect supplied post-admission images before '
         'deciding to execute. Verify measured delta and fresh mock images afterwards. Receive the owner '
-        'corrections and paraphrase each into separate related GENERAL guidance; save one successful '
+        'corrections and paraphrase each into separate related MOVE(LEFT_JOINT_0) guidance; save one successful '
         'parameterized MOVE(LEFT_JOINT_0) template with source and verification evidence. '
         'No physical success is claimed.', [
             'Change only the selected joint; keep the other measured joints unchanged.',
@@ -109,7 +109,7 @@ try:
         'moved. Use prior guidance/templates only as hypotheses.')
     retrieved = {i for e in second['events'] if e['kind'] == 'memory_retrieved'
                  for i in e.get('memory_ids', [])}
-    assert saved & retrieved, (saved, retrieved)
+    assert saved <= retrieved, (saved, retrieved)
     jid = start_refinement(manager, owner, runner)
     started = time.monotonic()
     while jid in manager.active:
