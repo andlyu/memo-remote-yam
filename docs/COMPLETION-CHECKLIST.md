@@ -308,3 +308,25 @@ physical AgP integration and passing software tests do not erase those misses.
   validated at2560×1080/8 fps), decouples uncalibrated read-only scene previews
   from fresh robot geometry preparation, and supplies a concise Python wrapper
   around the unchanged authors' CLI. A new physical acceptance is still needed.
+
+### Latency acceptance attempt 4 — further improvement, target still missed
+
+- Sourceedb6554b3f6516de4b25428da352d470cd2bc1d3; normal UI run
+  `71f3ea8c3b2b4955a10bbde4a7573b0f`, Agent as Policy / Automated / RoboHouse.
+- Entry01:06:01.7479 UTC October31; Run01:06:03.693. First generated trajectory
+  requested19.357 s after server creation; measured physical completion21.187 s
+  after click and23.132 s after entry. Both targets missed; no exception claimed.
+- The runtime agent's generated `scratch/step.py` made one relative+0.04 rad
+  request. Fresh measured delta+0.03815 rad; other joint variation≤0.000763 rad;
+  no gripper commands. Fresh RGB was inspected before and after movement.
+- Read-only preparation images3.224 s, native thread5.970 s, leased running
+  11.105 s, fresh post-homing views13.142 s, generated trajectory19.357 s.
+- Source-copy physical replay retained28.125 s/2318234 bytes. Source video
+  preserved rather than re-encoded. Timed browser recording includes entry,
+  click and the full actual execution; receipts, programs and footage retained.
+- A preceding recording-script attempt misread an accessibility diff and stopped
+  before clicking Run. No run/session was submitted by that attempt; it is an
+  instrumentation failure, not a physical pass or a hidden motion retry.
+- Next candidate uses explicit post-homing image inspection, drafts candidate
+  programs during admission, and exposes image-tool completion evidence. Human
+  entry timing remains pending confirmed name/email; automation never invents it.

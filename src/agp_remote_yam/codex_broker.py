@@ -22,6 +22,9 @@ import time
 import uuid
 
 MAX_FRAME = 8_000_000
+MODEL_EFFORTS = {'gpt-6-astra': ('low', 'medium', 'high', 'xhigh', 'max'),
+                 'gpt-6.1-sol': ('low', 'medium', 'high', 'xhigh', 'max'),
+                 'gpt-6-luna': ('none', 'low', 'medium', 'high', 'xhigh', 'max')}
 RESULT_SCHEMA = dict(type='object', additionalProperties=False, properties=dict(
     status=dict(type='string', enum=['continue', 'done', 'give_up']), summary=dict(type='string'),
     evidence=dict(type='array', items=dict(type='string'))), required=['status', 'summary', 'evidence'])
@@ -32,9 +35,17 @@ authoritative robot interface for every robot interaction. Programs and their
 results belong in scratch/. Use concise programs and the provided CLI wrapper
 instead of rebuilding transport boilerplate. Keep all tools in the selected
 isolated /work environment. Do not alter the supplied clients or interfaces.
+While queue admission is pending, draft candidate Python programs from the task
+and initial scene, with observation and movement as separate stages. Compute
+targets from fresh state when the movement stage executes. Use the wait to do
+the programming work; after inspecting leased images, choose to execute or
+revise your draft rather than rebuilding transport and task boilerplate.
 Pre-admission images are read-only scene context: the arms may home before the
 lease. Read fresh leased state before choosing targets, and get fresh images or
-depth whenever changed conditions or uncertainty require them. Never invent
+depth whenever changed conditions or uncertainty require them. For physical
+actions, inspect fresh post-homing images with the image tool before the first
+movement; never combine an unseen fresh capture with movement in one script.
+Never invent
 calibration, motion evidence or task success. A failed or timed-out movement
 must never be retried automatically. Respect Stop. Use coding and image tools
 directly without an introductory status announcement. Continue the observation,
@@ -106,19 +117,21 @@ def result(value):
     return value
 
 
-def execute(sock, value, *, binary, home, timeout=610):
+def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effort='low'):
+    if model not in MODEL_EFFORTS or effort not in MODEL_EFFORTS[model]:
+        raise ValueError('Unsupported server model profile')
     env = dict(HOME=str(home), CODEX_HOME=str(home / '.codex'),
                PATH='/usr/local/bin:/usr/bin:/bin', LANG='C.UTF-8')
     # A selected native remote environment routes shell, file, patch and image
     # tools to its exec-server. There is no local-execution fallback.
     config = ['forced_login_method="chatgpt"', 'model_provider="openai"',
-              'model="gpt-6-astra"', 'approval_policy="never"', 'web_search="disabled"',
+              'model='+json.dumps(model), 'approval_policy="never"', 'web_search="disabled"',
               'features.apps=false', 'features.plugins=false', 'features.hooks=false',
               'features.multi_agent=false', 'features.memories=false',
               'features.skip_host_skill_discovery=true', 'features.remote_control=false',
               'features.browser_use=false', 'features.computer_use=false',
               'features.js_repl=false', 'features.code_mode=false',
-              'mcp_servers={}', 'notify=[]', 'model_reasoning_effort="low"',
+              'mcp_servers={}', 'notify=[]', 'model_reasoning_effort='+json.dumps(effort),
               'service_tier="fast"', 'features.fast_mode=true',
               'features.shell_tool=true', 'features.unified_exec=true',
               'features.apply_patch_freeform=true', 'features.view_image=true',
@@ -189,7 +202,7 @@ def execute(sock, value, *, binary, home, timeout=610):
                                     if message.get('result', {}).get('cwd') != 'file:///work':
                                         raise RuntimeError('Executor did not confirm the isolated workspace')
                                     profile('environment_ready')
-                                    request(3, 'thread/start', dict(model='gpt-6-astra', approvalPolicy='never',
+                                    request(3, 'thread/start', dict(model=model, approvalPolicy='never',
                                         sandbox='danger-full-access', ephemeral=True,
                                         baseInstructions=POLICY_INSTRUCTIONS,
                                         environments=[dict(environmentId=environment, cwd='/work')],
@@ -217,6 +230,12 @@ def execute(sock, value, *, binary, home, timeout=610):
                                         final = result(json.loads(text))
                                     except (ValueError, TypeError):
                                         pass
+                                elif method == 'item/completed':
+                                    item = params.get('item', {})
+                                    event = dict(type='agp.tool.completed', tool=item.get('type'), at=time.time())
+                                    if isinstance(item.get('path'), str) and item['path'].startswith('/work/'):
+                                        event['path'] = item['path']
+                                    send(sock, dict(event=event))
                                 elif method == 'turn/completed':
                                     if params['turn']['status'] != 'completed' or final is None:
                                         raise RuntimeError('Codex did not complete a valid coding result')
@@ -236,8 +255,11 @@ def execute(sock, value, *, binary, home, timeout=610):
 
 class Server(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
     daemon_threads = True
-    def __init__(self, path, *, uid, binary, home):
+    def __init__(self, path, *, uid, binary, home, model='gpt-6-astra', effort='low'):
+        if model not in MODEL_EFFORTS or effort not in MODEL_EFFORTS[model]:
+            raise ValueError('Unsupported server model profile')
         self.uid,self.binary,self.home=uid,binary,Path(home)
+        self.model,self.effort=model,effort
         self.slot=threading.BoundedSemaphore(1)
         super().__init__(path, Handler)
         Path(path).chmod(0o660)
@@ -257,7 +279,8 @@ class Handler(socketserver.BaseRequestHandler):
             send(self.request, dict(error='Coding worker busy'));return
         try:
             value=validate(receive(self.request));self.request.settimeout(650)
-            execute(self.request,value,binary=self.server.binary,home=self.server.home)
+            execute(self.request,value,binary=self.server.binary,home=self.server.home,
+                    model=self.server.model,effort=self.server.effort)
         except Exception as exc:
             print('agp coding failure:',type(exc).__name__,flush=True)
             try:send(self.request,dict(error='Isolated coding turn failed'))
@@ -267,9 +290,12 @@ class Handler(socketserver.BaseRequestHandler):
 
 if __name__ == '__main__':
     p=argparse.ArgumentParser();p.add_argument('--socket',required=True);p.add_argument('--client-uid',required=True,type=int)
-    p.add_argument('--binary',required=True);p.add_argument('--home',type=Path,required=True);a=p.parse_args()
+    p.add_argument('--binary',required=True);p.add_argument('--home',type=Path,required=True)
+    p.add_argument('--model',choices=tuple(MODEL_EFFORTS),default='gpt-6-astra')
+    p.add_argument('--reasoning-effort',choices=('none','low','medium','high','xhigh','max'),default='low');a=p.parse_args()
     if subprocess.check_output([a.binary, '--version'], text=True).strip() != 'codex-cli 0.159.0':
         raise SystemExit('This broker requires tested Codex 0.159.0')
     path=Path(a.socket)
     if path.exists():path.unlink()
-    with Server(str(path),uid=a.client_uid,binary=a.binary,home=a.home) as server:server.serve_forever()
+    with Server(str(path),uid=a.client_uid,binary=a.binary,home=a.home,
+                model=a.model,effort=a.reasoning_effort) as server:server.serve_forever()

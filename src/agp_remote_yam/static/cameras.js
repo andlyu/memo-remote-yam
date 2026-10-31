@@ -55,9 +55,9 @@
       status = "Connecting to public camera stream";
       const url = "/" + stream.path + "/index.m3u8";
       if (root.Hls?.isSupported()) {
-        // Match LocalPlayground's complete-segment preset. No extra stream,
+        // Complete-segment playback with a short target on both HD feeds. No extra stream,
         // transcoder, independently refreshed camera or synthetic fallback.
-        const hd = stream.path === "synchronized-hd";
+        const hd = ["synchronized-hd", "robo-house"].includes(stream.path);
         hls = new root.Hls({enableWorker:false, lowLatencyMode:false, maxBufferLength:4,
           liveSyncMode:"buffered", backBufferLength:0, liveSyncDuration:hd ? .5 : 1,
           liveMaxLatencyDuration:hd ? 1 : 2, liveSyncOnStallIncrease:0, maxLiveSyncPlaybackRate:1.05});

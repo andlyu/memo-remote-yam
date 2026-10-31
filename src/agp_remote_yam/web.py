@@ -34,6 +34,17 @@ class App:
             secret_file.chmod(0o600)
         self.secret = secret_file.read_bytes()
 
+    def configuration(self, robot_id, csrf):
+        video_stream = self.video_streams[robot_id]
+        return dict(csrf=csrf, robot_id=robot_id,
+            robots=[dict(id=k, name=v) for k,v in ROBOTS.items()],
+            model=self.settings.model, mode="offline_mock" if self.settings.offline else "physical_api",
+            agent="scripted" if self.settings.demo else self.settings.agent_mode, remote_yam_revision=REMOTE_YAM_COMMIT,
+            camera_source=self.settings.camera_source, camera_roles=list(CAMERA_ROLES), video_stream=video_stream,
+            agp_reference_revision=UPSTREAM_AGP_COMMIT, approach="Agent as Policy + MEMO" if self.settings.memo_site else APPROACH,
+            server_time=__import__("time").time(), source_repository="https://github.com/andlyu/agp-remote-yam",
+            source_revision=os.environ.get("AGP_SOURCE_REVISION", "development"))
+
     def identity(self, headers):
         cookie = SimpleCookie()
         cookie.load(headers.get("cookie", ""))
@@ -134,7 +145,12 @@ class App:
             mime = {"index.html": "text/html; charset=utf-8", "app.js": "text/javascript", "cameras.js": "text/javascript", "style.css": "text/css"}[name]
             if self.settings.memo_site and name in ("index.html", "app.js"):
                 name = "memo-" + name
-            return 200, mime, files("agp_remote_yam").joinpath("static", name).read_bytes()
+            data = files("agp_remote_yam").joinpath("static", name).read_bytes()
+            if name == "index.html":
+                seed = json.dumps(self.configuration(robot_id, csrf)).replace("<", "\\u003c")
+                data = data.replace(b"<!--INITIAL_CONFIG-->",
+                    ('<script id="initial-config" type="application/json">'+seed+'</script>').encode())
+            return 200, mime, data
         if method == "GET" and path in ("/static/hls.light.min.js", "/static/HLS-LICENSE"):
             from .dependency import runner_root
             asset = runner_root() / "static" / path.rsplit("/", 1)[-1]
@@ -144,14 +160,7 @@ class App:
                 if stream and path.startswith("/" + stream["path"] + "/"):
                     return fetch_media(stream, path, query)
         if method == "GET" and path == "/api/config":
-            return 200, "application/json", dict(csrf=csrf, robot_id=robot_id,
-                robots=[dict(id=k, name=v) for k,v in ROBOTS.items()],
-                model=self.settings.model, mode="offline_mock" if self.settings.offline else "physical_api",
-                agent="scripted" if self.settings.demo else self.settings.agent_mode, remote_yam_revision=REMOTE_YAM_COMMIT,
-                camera_source=self.settings.camera_source, camera_roles=list(CAMERA_ROLES), video_stream=video_stream,
-                agp_reference_revision=UPSTREAM_AGP_COMMIT, approach="Agent as Policy + MEMO" if self.settings.memo_site else APPROACH,
-                server_time=__import__("time").time(), source_repository="https://github.com/andlyu/agp-remote-yam",
-                source_revision=os.environ.get("AGP_SOURCE_REVISION", "development"))
+            return 200, "application/json", self.configuration(robot_id, csrf)
         if method == "GET" and path == "/api/station":
             if self.settings.offline:
                 return 200, "application/json", dict(connected=False, mock=True, message="Mock robot · no physical control")

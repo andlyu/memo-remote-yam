@@ -190,11 +190,16 @@ class AgentRuntime:
                        + json.dumps(snapshot["context"]))
             if observation is not None:
                 prompt += ("\nThese are READ-ONLY observations BEFORE queue admission. The arms may home during preparation. "
-                           "Use this time to inspect the scene and write your program. The robot client waits for admission. "
+                           "Use this time to inspect the scene and draft candidate programs with separate observation "
+                           "and movement stages. After reviewing leased images, choose to execute or revise the draft. "
+                           "The robot client waits for admission. "
                            "Your program MUST read fresh measured state after admission before choosing a motion target; "
                            "never use the pre-admission joint pose as an action target. Reobserve images when changed arm "
                            "configuration or scene uncertainty affects the action. Motion requests made before admission "
-                           "are rejected. There is no permission to move before the lease is active.")
+                           "are rejected. There is no permission to move before the lease is active. "
+                           "For a physical run, fetch fresh leased images after homing and inspect them with the image "
+                           "tool before choosing the first movement. Do not capture unseen fresh images and move in "
+                           "the same script. Pre-admission views are planning context, not visual approval of the homed pose.")
             self.journal.add("initial_observation", "Fresh state and camera views supplied to the coding agent",
                              context=snapshot["context"], duration_s=round(time.monotonic()-started, 3))
         return prompt
@@ -253,6 +258,9 @@ class AgentRuntime:
                 if event.get("type") == "agp.profile":
                     self.journal.add("worker_profile", "Coding worker: " + str(event.get("stage")),
                                      profile=event)
+                if event.get("type") == "agp.tool.completed":
+                    self.journal.add("coding_tool", "Coding agent completed " + str(event.get("tool")),
+                                     tool=event.get("tool"), path=event.get("path"), completed_at=event.get("at"))
             returncode = process.wait()
             if self.stopped.is_set():
                 return None

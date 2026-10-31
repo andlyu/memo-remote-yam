@@ -20,15 +20,16 @@ def test_broker_rejects_endpoint_and_cli_overrides():
 
 
 @pytest.mark.parametrize('prepared', [False, True])
-def test_native_environment_handshake_and_result(tmp_path, prepared):
+@pytest.mark.parametrize('model,effort',[('gpt-6-astra','low'),('gpt-6-luna','none')])
+def test_native_environment_handshake_and_result(tmp_path, prepared, model, effort):
     home=tmp_path/'home';(home/'workspace').mkdir(parents=True)
     binary=tmp_path/'codex-fixture'
-    binary.write_text('#!'+sys.executable+'\n'+'''
+    binary.write_text('#!'+sys.executable+'\n'+f'EXPECTED_MODEL={model!r}\nEXPECTED_EFFORT={effort!r}\n'+'''
 import json,sys
 assert 'features.shell_tool=true' in sys.argv
 assert 'features.unified_exec=true' in sys.argv
 assert 'mcp_servers={}' in sys.argv
-assert 'model_reasoning_effort="low"' in sys.argv
+assert 'model_reasoning_effort='+json.dumps(EXPECTED_EFFORT) in sys.argv
 assert 'shell_environment_policy.inherit="none"' in sys.argv
 assert any(v.startswith('shell_environment_policy.set=') and 'HOME="/tmp"' in v and '/opt/python/bin' in v for v in sys.argv)
 def emit(value):print(json.dumps(value),flush=True)
@@ -48,7 +49,7 @@ for line in sys.stdin:
   assert p['authBearerToken']=='a'*43
  if i==3:
   assert p['environments'][0]['cwd']=='/work' and p['ephemeral']
-  assert p['model']=='gpt-6-astra'
+  assert p['model']==EXPECTED_MODEL
  emit(dict(id=i,result={'thread':{'id':'fixture'}} if i==3 else {}))
  if i==4:
   assert warming==2
@@ -63,7 +64,7 @@ for line in sys.stdin:
         try:
             request=value()
             if prepared: request=dict(op='prepare',protocol='agp-codex-remote-v2',executor_url=request['executor_url'],executor_token=request['executor_token'])
-            execute(left,request,binary=str(binary),home=home,timeout=5)
+            execute(left,request,binary=str(binary),home=home,timeout=5,model=model,effort=effort)
         except Exception as exc:failures.append(exc)
     thread=threading.Thread(target=run);thread.start();right.settimeout(6)
     try:

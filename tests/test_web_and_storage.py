@@ -163,3 +163,17 @@ def test_memo_corrections_and_skillbook_keep_browser_ownership(tmp_path, monkeyp
         assert request(app, '/api/memories', cookie=other)[2]['memories'] == []
     finally:
         app.manager.close()
+
+
+def test_initial_html_has_matching_csrf_and_safe_config_without_extra_fetch(tmp_path):
+    import re
+    model='fixture </script><script>unsafe</script>'
+    app=App(Settings(data=tmp_path,demo=True,model=model))
+    status,cookie,body=request(app,'/?robot_id=robot-ba8413962083809c')
+    assert status==200 and b'<script>unsafe</script>' not in body
+    match=re.search(rb'<script id="initial-config" type="application/json">(.*?)</script>',body)
+    seed=json.loads(match[1])
+    _,_,config=request(app,'/api/config?robot_id=robot-ba8413962083809c',cookie=cookie)
+    assert seed['csrf']==config['csrf'] and seed['model']==model
+    assert seed['robot_id']=='robot-ba8413962083809c' and seed['approach']=='Agent as Policy'
+    assert b'<!--INITIAL_CONFIG-->' not in body

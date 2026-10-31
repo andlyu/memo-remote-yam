@@ -64,7 +64,7 @@ To withdraw this website, remove only its dedicated proxy site include,
 validate and reload Caddy, then stop/disable its own web unit. Keep run-data and any legacy skillbook backups. Other websites and the public robot API are independent.
 
 
-The native worker uses Astra with low reasoning and supported Fast mode. It
+The native worker supports server-selected Astra, Sol and Luna profiles with supported Fast mode. The next physical candidate selects Luna with reasoning set to none; the public configuration labels the actual model. Model/effort cannot be overridden by a public prompt. It
 prepares its isolated executor and plans from explicitly labelled public,
 read-only observations while the existing queue prepares the robot. The arms
 may home in that interval. Only a matching, active, settled lease starts the
@@ -117,3 +117,23 @@ no policy or motion targets; generated programs remain the runtime agent's work.
 Uncalibrated preparation views explicitly expose no end-effector pose or camera
 pose binding. Fresh geometry is prepared separately and remains mandatory for
 leased commands.
+
+Model profile configuration must agree in three places: web `--model`,
+`model` in `/etc/agp-remote-codex.json`, and private broker `--model` plus
+`--reasoning-effort`. The broker validates supported combinations and rejects
+client model overrides. The local defaults remain Astra/low.
+
+An initial Luna mock captured frames and moved before model inspection and is
+not accepted as evidence for the fresh-vision path. The stricter test
+`ac9325b271244dc6a68e288f9956dd07` inspected images first but took17.338 seconds.
+The staged-program test `928b06df33e44252850885315b839df2` drafted code during a
+ten-second simulated admission wait, viewed fresh post-admission top/wrist
+images at12.53 seconds, then completed its single generated mock movement
+at13.882 seconds. Fresh post-motion images and state were also checked. These
+remain mock results. Runtime logs now retain image-tool completion paths, so
+capture alone is distinguishable from image delivery to the model.
+
+The initial page includes its browser-specific CSRF/configuration as escaped,
+inert JSON, removing a configuration round trip. Identity/ownership and CSRF
+validation remain unchanged. Both HD camera feeds use a0.5-second HLS live
+buffer target; actual public-stream buffering still needs visual timing checks.
