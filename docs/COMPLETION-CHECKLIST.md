@@ -123,7 +123,7 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
   website, source repository, runs/results, live demos, recordings, replays/history,
   simulation outputs and supporting evidence. Any nonpublic exception reflects
   an explicit user instruction or visibility change, recorded below.
-- [ ] The website clearly names the actual approach/method being run. Use the
+- [x] The website clearly names the actual approach/method being run. Use the
   executed method's name; Spotter is an example, not a shared hardcoded label.
   The **Model** field identifies the approach being tested, as specified below.
 - [x] When a human joins, collect or confirm their name and email. Prefill known
@@ -158,7 +158,7 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
 - [x] The website is intuitive: a new visitor, without coaching, can find how to
   run the method. Record the visitor path and starting conditions; site entry
   has no separate 15-second pass/fail deadline.
-- [ ] **Mandatory for every run:** first observed actual method-driven physical
+- [x] **Mandatory for every run:** first observed actual method-driven physical
   YAM motion occurs both within **15 seconds after the startup move to Home
   completes** and within **30 seconds after the Run click**, using the boundaries
   below (including a documented readiness timestamp when Home is unnecessary).
@@ -170,7 +170,7 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
   panel for launches). Show the current stage, a plain-language reason and real
   stage completion, with honest failure/stall status and available recovery.
   Verify the detailed wait-stage behavior below.
-- [ ] Before marking the integration complete or reporting it done, open the
+- [x] Before marking the integration complete or reporting it done, open the
   deployed website and perform a final end-to-end physical YAM run through its
   normal user interface. Verify every completion requirement against that
   deployment and record evidence; unmet or unverified requirements block
@@ -614,3 +614,18 @@ The repair interrupts preparation, explicitly cleans its native background termi
 The previously saved contact was flagged incorrect. The user confirmed a corrected email for future tests; old records are retained. Private contact values are excluded from this public evidence. Score remains12/15 while actual-model verification and current-deployment physical signoff are pending.
 
 Actual native mock verification passed with the same repaired broker hash: runs `14a25bb2111049d69da1310db0729796` and `43acb730c1ab4c4e8ca49c1be0461517`, refinement `aacf70105d6e4dcb8a08be55c5b7347c`. Both runs learned/retrieved corrections and completed one mock movement; fresh-turn image review and preparation-stopped stages are retained in `docs/evidence/2026-10-30-native-handoff.json`. This establishes actual inference and handoff behavior, not physical acceptance.
+
+
+## Final repaired-runtime signoff — October30,2026 (UTC October31)
+
+15/15 current-deployment requirements verified. Tested physical runtime82fb18ad7ce76da5e8541c733b5b0ab9d7f3122f; final evidence/report updates do not alter that runtime. Normal UI run185f6b2c162441198cc5b55ea52fafd5 on RoboHouse used MEMO with confirmed Andrew identity and automated_test mode. It retrieved template5/guidance4 from pinned skillbookv5, generated one new +0.03rad leftjoint0 adjustment and measured+.0286107rad, preserving all other commanded targets. No retry. Model MEMO was verified in site config/UI, public run metadata, controller run_configuration and the backend public_run.model_name field used for run/queue attribution; foundation model remains separately gpt-6-luna.
+
+Run1793427934.719; matched settled Home1793427946.308876. Live UI frame0329 is unchanged at1793427955.977–1793427956.074; frame0330 visibly shows the method-driven wrist-view shift at1793427956.083–1793427956.106, after the method packet and stable post-Home scene. Therefore visible method movement occurred by21.387s afterRun and9.797s afterHome. Measured completion was21.410/9.820s respectively. Retained UI samples share the browser wall clock with the actual form timestamp; run click lies within independently captured1793427934.684–1793427934.956 interval. Async camera buffering is retained, not subtracted. No GPU/research exception.
+
+Matched controller session sess_c723f9e14fae4823 joined receipt1793427936.556543 and admission receipt1793427946.288808 reasonjetson_leased, episodeep_9b2f04c3233f493b. Full Run time already meets30s, so no queue deduction was claimed. Receipt times include network delivery and are not presented as exact backend-entry times. This also meets the newer shared rule allowing evidenced queue exclusion; stricter full wall time passes.
+
+Immediate replay ready31.125s/2601546bytes; normal video control advanced0→25.376s, paused=false/error=null. Selecting the first prior physical run played its55.125s footage through completion/error=null, then normal history selection returned to the final run. Live observer and independent top/wrist views were visible; all658 UI samples and matching timing metadata retained. Public sanitized evidence: docs/evidence/2026-10-30-final-physical.json, plus current public run/replay. Public screenshots/recording redact contact; no visibility exception for demo materials. Synthetic/mock evidence remains explicitly labelled. No simulated task rollout; kinematics/contact validation is not a claimed simulation execution.
+
+All15 requirements reviewed: source/sitepublic; approachModelMEMO; editable confirmed name/email and human attribution; actual physical execution/live views; immediate/historical replay; simulationexplicitN/A; discoverable Run path; both visual timing limits; persistent truthful wait/failure/Stop recovery; final normal UI physical run. This signoff covers the repaired runtime and every physical run on it (one). Older failed/unverified revision outcomes remain in their historical evidence and are not retroactively marked passed. No active MEMO run remains.
+
+Public supporting artifacts: [timestamped UI samples](evidence/memo-physical-ui-verification.mp4) (contact redacted; sampling-batch gap after onset preserved) and [visual comparison](evidence/memo-visual-onset.png). Earliest distinct change is frame0330; the earlier summary's22.9/11.3s bounds were conservative sampled bounds, tightened by frame-by-frame review to21.387/9.797s. No events or older outcomes were rewritten. The website's reviewed timing label is restricted to this exact run ID and matching original Run/Home timestamps; other runs retain the automatic-unverified label. Presentation regression12passed5.83s; physical runtime source unchanged.

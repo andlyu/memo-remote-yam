@@ -19,6 +19,11 @@ assert.match(node('run-progress').textContent,/Home complete/);
 assert.match(node('run-progress').textContent,/More than 15 s/);
 assert.match(node('run-progress').textContent,/Stop is available/);
 assert.equal(calls.length,0); // Displaying stalled/failed state never replays a request.
+assert.match(vm.runInContext(`timingLabel({id:'unreviewed',mode:'physical_api',timing:{run_to_motion_s:20,home_to_measured_completion_s:9}})`,context),/unverified/);
+vm.runInContext(`verificationReport={physical_reviews:[{run_id:'reviewed',status:'passed',run_clicked_at:100,home_completed_at:112,run_to_visible_upper_s:21.4,home_to_visible_upper_s:9.8}]};`,context);
+assert.match(vm.runInContext(`timingLabel({id:'reviewed',timing:{run_clicked_at:100,home_completed_at:112}})`,context),/Both timing targets met/);
+assert.doesNotMatch(vm.runInContext(`timingLabel({id:'different',timing:{run_clicked_at:100,home_completed_at:112}})`,context),/Both timing targets met/);
+assert.doesNotMatch(vm.runInContext(`timingLabel({id:'reviewed',timing:{run_clicked_at:101,home_completed_at:112}})`,context),/Both timing targets met/);
 node('task').value='Offline fixture';node('duration').value='60';
 node('runner-name').value='Fixture';node('runner-email').value='fixture@example.test';
 (async()=>{

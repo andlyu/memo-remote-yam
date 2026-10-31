@@ -1,6 +1,6 @@
 {
   "harness_revision": "1619d7f25190ed00c37da6006b3f16c4580eb166",
-  "updated_at": "2026-10-31T05:54:00Z",
+  "updated_at": "2026-10-31T06:32:00Z",
   "requirements": [
     {
       "id": 1,
@@ -14,7 +14,7 @@
     },
     {
       "id": 3,
-      "passed": false,
+      "passed": true,
       "requirement": "The website clearly names the actual approach/method being run. Use the executed method's name; Spotter is an example, not a shared hardcoded label. The **Model** field identifies the approach being tested, as specified below."
     },
     {
@@ -64,7 +64,7 @@
     },
     {
       "id": 13,
-      "passed": false,
+      "passed": true,
       "requirement": "**Mandatory for every run:** first observed actual method-driven physical YAM motion occurs both within **15 seconds after the startup move to Home completes** and within **30 seconds after the Run click**, using the boundaries below (including a documented readiness timestamp when Home is unnecessary). Homing/preparation motion does not count. Verify and record both full elapsed times for every run; a sampled demonstration is insufficient. Apply only the documented GPU-launch or research-grounded exceptions below."
     },
     {
@@ -74,10 +74,25 @@
     },
     {
       "id": 15,
-      "passed": false,
+      "passed": true,
       "requirement": "Before marking the integration complete or reporting it done, open the deployed website and perform a final end-to-end physical YAM run through its normal user interface. Verify every completion requirement against that deployment and record evidence; unmet or unverified requirements block completion."
     }
   ],
   "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/COMPLETION-CHECKLIST.md",
-  "note": "12/15 verified. Public artifact access and failure/recovery checks passed. Pending full Model attribution, visual timing and final current-deployment physical signoff."
+  "note": "15/15 current-deployment requirements verified. Actual-model mock, bounded physical MEMO execution, visual timing, public Model attribution, wait/recovery, current replay and prior history playback passed. Historical failures are retained.",
+  "scope": "Current repaired runtime82fb18a and final deployed website review; all historical run outcomes remain recorded separately.",
+  "physical_reviews": [
+    {
+      "run_id": "185f6b2c162441198cc5b55ea52fafd5",
+      "status": "passed",
+      "runtime_revision": "82fb18ad7ce76da5e8541c733b5b0ab9d7f3122f",
+      "run_clicked_at": 1793427934.719,
+      "home_completed_at": 1793427946.308876,
+      "first_visible_by": 1793427956.106,
+      "previous_unchanged_frame_at": 1793427955.977,
+      "run_to_visible_upper_s": 21.38699984550476,
+      "home_to_visible_upper_s": 9.797123908996582,
+      "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/evidence/2026-10-30-final-physical.json"
+    }
+  ]
 }
