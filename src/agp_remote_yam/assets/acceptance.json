@@ -1,6 +1,6 @@
 {
   "harness_revision": "1619d7f25190ed00c37da6006b3f16c4580eb166",
-  "updated_at": "2026-10-31T06:32:00Z",
+  "updated_at": "2026-10-31T06:59:28Z",
   "requirements": [
     {
       "id": 1,
@@ -64,7 +64,7 @@
     },
     {
       "id": 13,
-      "passed": true,
+      "passed": false,
       "requirement": "**Mandatory for every run:** first observed actual method-driven physical YAM motion occurs both within **15 seconds after the startup move to Home completes** and within **30 seconds after the Run click**, using the boundaries below (including a documented readiness timestamp when Home is unnecessary). Homing/preparation motion does not count. Verify and record both full elapsed times for every run; a sampled demonstration is insufficient. Apply only the documented GPU-launch or research-grounded exceptions below."
     },
     {
@@ -74,13 +74,13 @@
     },
     {
       "id": 15,
-      "passed": true,
+      "passed": false,
       "requirement": "Before marking the integration complete or reporting it done, open the deployed website and perform a final end-to-end physical YAM run through its normal user interface. Verify every completion requirement against that deployment and record evidence; unmet or unverified requirements block completion."
     }
   ],
   "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/COMPLETION-CHECKLIST.md",
-  "note": "15/15 current-deployment requirements verified. Actual-model mock, bounded physical MEMO execution, visual timing, public Model attribution, wait/recovery, current replay and prior history playback passed. Historical failures are retained.",
-  "scope": "Current repaired runtime82fb18a and final deployed website review; all historical run outcomes remain recorded separately.",
+  "note": "13/15 verified. The apple task f93ef0712ffb4d9599f0ce53258270c5 failed before grasp due to a generated gripper endpoint below zero and missed startup timing. Endpoint generation repaired and offline verified; physical apple completion and final timing/signoff remain open. Earlier run evidence is preserved.",
+  "scope": "Current integration; earlier bounded joint test retains its visual review. Later apple task failure reopens timing and final end-to-end signoff.",
   "physical_reviews": [
     {
       "run_id": "185f6b2c162441198cc5b55ea52fafd5",

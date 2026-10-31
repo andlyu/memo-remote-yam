@@ -158,7 +158,7 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
 - [x] The website is intuitive: a new visitor, without coaching, can find how to
   run the method. Record the visitor path and starting conditions; site entry
   has no separate 15-second pass/fail deadline.
-- [x] **Mandatory for every run:** first observed actual method-driven physical
+- [ ] **Mandatory for every run:** first observed actual method-driven physical
   YAM motion occurs both within **15 seconds after the startup move to Home
   completes** and within **30 seconds after the Run click**, using the boundaries
   below (including a documented readiness timestamp when Home is unnecessary).
@@ -170,7 +170,7 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
   panel for launches). Show the current stage, a plain-language reason and real
   stage completion, with honest failure/stall status and available recovery.
   Verify the detailed wait-stage behavior below.
-- [x] Before marking the integration complete or reporting it done, open the
+- [ ] Before marking the integration complete or reporting it done, open the
   deployed website and perform a final end-to-end physical YAM run through its
   normal user interface. Verify every completion requirement against that
   deployment and record evidence; unmet or unverified requirements block
@@ -629,3 +629,12 @@ Immediate replay ready31.125s/2601546bytes; normal video control advanced0→25.
 All15 requirements reviewed: source/sitepublic; approachModelMEMO; editable confirmed name/email and human attribution; actual physical execution/live views; immediate/historical replay; simulationexplicitN/A; discoverable Run path; both visual timing limits; persistent truthful wait/failure/Stop recovery; final normal UI physical run. This signoff covers the repaired runtime and every physical run on it (one). Older failed/unverified revision outcomes remain in their historical evidence and are not retroactively marked passed. No active MEMO run remains.
 
 Public supporting artifacts: [timestamped UI samples](evidence/memo-physical-ui-verification.mp4) (contact redacted; sampling-batch gap after onset preserved) and [visual comparison](evidence/memo-visual-onset.png). Earliest distinct change is frame0330; the earlier summary's22.9/11.3s bounds were conservative sampled bounds, tightened by frame-by-frame review to21.387/9.797s. No events or older outcomes were rewritten. The website's reviewed timing label is restricted to this exact run ID and matching original Run/Home timestamps; other runs retain the automatic-unverified label. Presentation regression12passed5.83s; physical runtime source unchanged.
+
+
+## Apple-task failure and gripper repair — October30,2026 (UTC October31)
+
+Current status13/15, with timing and final physical signoff reopened. The15/15 entry above records a bounded joint test; later runf93ef0712ffb4d9599f0ce53258270c5 exposed a gripper defect and missed startup timing. Apple placement has not been verified. Preserve both outcomes; do not reuse the bounded test as broad task acceptance.
+
+The retained third packet had10 gripper-close waypoints, trajectorytraj_ep_f4aa32fa1bcc4727_138. Its final left_gripper was-1.1102230246251565e-16 from interpolation of measured0.9992793312193716 to intended0.0. The canonical HttpSessionAPI._trajectory_waypoints validator rejected it while building the local payload, before HTTP submission; no packet_dispatched/accepted/completed exists for that trajectory. The first two arm-motion packets dispatched and settled. No grasp/lift/place completed. This is a floating-point packet-generation defect, not evidence of a physical boundary crossing or a gripper opening too far.
+
+Repair: preserve the already-validated exact final gripper target rather than recomputing it with subtract/multiply/divide. Keep the upstream strict[0,1]/finite validator, all joint/workspace/contact/pacing checks, queue/lease and non-replay behavior unchanged. Regression with the actual measured start failed for both arms before repair (2failed6passed1.65s). Fullsuite116passed23.53s after repair, including invalid tiny-negative/above-one/NaN/infinite requested targets. No failed physical command is automatically replayed.

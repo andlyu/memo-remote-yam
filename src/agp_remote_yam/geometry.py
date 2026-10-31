@@ -85,7 +85,10 @@ class YamGeometry:
             for arm in ("left", "right"):
                 start = float(observation[arm + "_gripper"])
                 target = (grips or {}).get(arm, start)
-                point[arm + "_gripper"] = start + (target - start) * (index + 1) / len(pairs)
+                # The already-validated target is the exact final endpoint.
+                # Recomputing close=0 can produce a tiny negative fraction.
+                point[arm + "_gripper"] = (target if index + 1 == len(pairs) else
+                    start + (target - start) * (index + 1) / len(pairs))
             points.append(point)
             before = q
         return points

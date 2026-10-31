@@ -28,6 +28,35 @@ def test_gripper_preserves_both_measured_arm_positions(geometry, station):
     assert all(np.allclose(p["right_joints_deg"], observation["right_joints_deg"]) for p in points)
 
 
+@pytest.mark.parametrize('side', ['left', 'right'])
+@pytest.mark.parametrize('start,target', [
+    (0.9992793312193716, 0.0),  # Measured start of the rejected apple-task close.
+    (0.123456789, 1.0),
+])
+def test_gripper_endpoints_pass_the_unchanged_packet_validator(geometry, station, side, start, target):
+    from remote_yam.session import _trajectory_waypoints
+    observation = station.get_robot_observation('yam-1')
+    observation[side + '_gripper'] = start
+    points = geometry.joints(side, np.deg2rad(observation[side + '_joints_deg']).tolist(),
+                             observation, 0, {side: target})
+    # Exercise the actual validator which rejected the retained physical packet.
+    assert _trajectory_waypoints(points) == points
+    assert points[-1][side + '_gripper'] == target
+    assert all(0 <= p[side + '_gripper'] <= 1 for p in points)
+    other = 'right' if side == 'left' else 'left'
+    assert all(p[other + '_gripper'] == observation[other + '_gripper'] for p in points)
+    for arm in ('left', 'right'):
+        assert all(np.allclose(p[arm + '_joints_deg'], observation[arm + '_joints_deg']) for p in points)
+
+
+@pytest.mark.parametrize('target', [-1e-16, 1.000000000000001, float('nan'), float('inf')])
+def test_gripper_repair_does_not_accept_invalid_requested_targets(geometry, station, target):
+    observation = station.get_robot_observation('yam-1')
+    with pytest.raises(ValueError, match='Gripper fraction'):
+        geometry.joints('left', np.deg2rad(observation['left_joints_deg']).tolist(),
+                        observation, 0, {'left': target})
+
+
 @pytest.mark.parametrize("side", ["left", "right"])
 def test_cartesian_base_frame_and_orientation_round_trip(geometry, station, side):
     observation = station.get_robot_observation("yam-1")
