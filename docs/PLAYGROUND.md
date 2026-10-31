@@ -46,9 +46,11 @@ home directory or container-engine socket is mounted in generated code.
 
 This transport pins **Codex 0.159.0** on both sides and uses its experimental
 app-server environment protocol. Test the exact version before activation.
-The harness uses Astra's catalog-default medium reasoning and a container-only
-tool environment; the account's model-only tool settings are overridden only
-for this isolated harness.
+The default broker profile uses Astra/low with Fast mode and a container-only
+tool environment. The server may explicitly select a supported model/effort
+profile; the current latency candidate uses Luna/none. Keep the web, executor
+configuration and broker model consistent. Public requests cannot override
+these settings. Account tool settings are overridden only for this harness.
 The worker user needs a normal rootless Podman installation and subordinate
 UID/GID range, with no Docker-group or sudo access. The separate broker accepts
 only that worker UID over a filesystem-protected Unix socket. Keep the existing
@@ -72,6 +74,12 @@ user. Start the broker with `python -m agp_remote_yam.codex_broker --socket ...
 The broker uses that account's normal auth cache directly. Do not copy the
 cache into the worker, image or run workspace. Set `HOME`, `XDG_RUNTIME_DIR`
 and the user bus for rootless Podman in the worker service environment.
+
+The native executor and ephemeral thread warm while the controller admits the
+run. The first model input contains fresh leased post-homing images and measured
+state. The agent still writes its own Python, reads fresh state when it executes,
+and verifies with new observations. No canned movement counts as startup work.
+Tool start/completion timestamps distinguish model waits from tool execution.
 
 ## Service protocol
 

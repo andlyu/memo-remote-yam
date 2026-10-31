@@ -54,6 +54,8 @@ for line in sys.stdin:
  if i==4:
   assert warming==2
   assert p['outputSchema']['properties']['status']['enum']==['continue','done','give_up']
+  emit(dict(method='item/started',params=dict(item=dict(type='imageView',path='/work/frames/fresh.png',privateText='not forwarded'))))
+  emit(dict(method='item/completed',params=dict(item=dict(type='imageView',path='/work/frames/fresh.png',privateText='not forwarded'))))
   result=dict(status='done',summary='Offline fixture complete',evidence=[])
   emit(dict(method='item/completed',params=dict(item=dict(type='agentMessage',text=json.dumps(result)))))
   emit(dict(method='turn/completed',params=dict(turn=dict(status='completed'))))
@@ -74,7 +76,13 @@ for line in sys.stdin:
             assert event==dict(prepared=True)
             send(right,dict(prompt='offline fixture'))
             event=receive(right)
-        assert event['event']['item']['type']=='agent_message'
+        assert event['event']['type']=='agp.tool.started'
+        assert event['event']['path']=='/work/frames/fresh.png'
+        assert 'privateText' not in event['event']
+        event=receive(right)
+        assert event['event']['type']=='agp.tool.completed'
+        assert event['event']['path']=='/work/frames/fresh.png'
+        assert receive(right)['event']['item']['type']=='agent_message'
         assert receive(right)['result']['status']=='done'
         thread.join(5);assert not thread.is_alive() and not failures
         assert not list((home/'workspace').iterdir())

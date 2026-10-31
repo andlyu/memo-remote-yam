@@ -104,6 +104,7 @@ def test_stop_during_preparation_reaps_worker_without_creating_robot_tools(tmp_p
     deadline=time.monotonic()+2
     while runtime.process is None and time.monotonic()<deadline:time.sleep(.01)
     assert runtime.process is not None
-    assert not runtime.backend_ready.is_set() and not hasattr(runtime,'bridge')
+    assert not runtime.backend_ready.is_set() and not runtime.initial_ready.is_set()
+    assert not hasattr(runtime,'bridge')
     runtime.cancel()
     assert runtime.finished.wait(2) and runtime.process.poll() is not None

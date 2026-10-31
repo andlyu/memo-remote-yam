@@ -258,9 +258,11 @@ class AgentRuntime:
                 if event.get("type") == "agp.profile":
                     self.journal.add("worker_profile", "Coding worker: " + str(event.get("stage")),
                                      profile=event)
-                if event.get("type") == "agp.tool.completed":
-                    self.journal.add("coding_tool", "Coding agent completed " + str(event.get("tool")),
-                                     tool=event.get("tool"), path=event.get("path"), completed_at=event.get("at"))
+                if event.get("type") in ("agp.tool.started", "agp.tool.completed"):
+                    phase = event["type"].rsplit(".", 1)[1]
+                    self.journal.add("coding_tool", "Coding agent " + phase + " " + str(event.get("tool")),
+                                     tool=event.get("tool"), path=event.get("path"), phase=phase,
+                                     **{phase + "_at": event.get("at")})
             returncode = process.wait()
             if self.stopped.is_set():
                 return None

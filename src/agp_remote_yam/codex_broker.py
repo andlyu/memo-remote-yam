@@ -43,8 +43,11 @@ revise your draft rather than rebuilding transport and task boilerplate.
 Pre-admission images are read-only scene context: the arms may home before the
 lease. Read fresh leased state before choosing targets, and get fresh images or
 depth whenever changed conditions or uncertainty require them. For physical
-actions, inspect fresh post-homing images with the image tool before the first
-movement; never combine an unseen fresh capture with movement in one script.
+actions, inspect fresh post-homing images before the first movement. Initial
+image inputs labelled phase=leased already show the settled post-homing scene;
+inspect these directly, without fetching duplicate views. If initial inputs
+precede admission or the scene changes, inspect new leased images with the image
+tool. Never capture unseen new images and move in one script.
 Never invent
 calibration, motion evidence or task success. A failed or timed-out movement
 must never be retried automatically. Respect Stop. Use coding and image tools
@@ -230,9 +233,10 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                                         final = result(json.loads(text))
                                     except (ValueError, TypeError):
                                         pass
-                                elif method == 'item/completed':
+                                elif method in ('item/started', 'item/completed'):
                                     item = params.get('item', {})
-                                    event = dict(type='agp.tool.completed', tool=item.get('type'), at=time.time())
+                                    phase = 'started' if method == 'item/started' else 'completed'
+                                    event = dict(type='agp.tool.'+phase, tool=item.get('type'), at=time.time())
                                     if isinstance(item.get('path'), str) and item['path'].startswith('/work/'):
                                         event['path'] = item['path']
                                     send(sock, dict(event=event))

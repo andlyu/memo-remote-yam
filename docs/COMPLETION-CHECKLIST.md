@@ -330,3 +330,23 @@ physical AgP integration and passing software tests do not erase those misses.
 - Next candidate uses explicit post-homing image inspection, drafts candidate
   programs during admission, and exposes image-tool completion evidence. Human
   entry timing remains pending confirmed name/email; automation never invents it.
+
+### Latency acceptance attempt 5 — genuine execution, stalled vision stage
+
+- Source80a21eef0706d8420afc2d8091109fb85d3b966b, normal deployed UI,
+  run `5ced337841f1450aaf52d103a493484b`; Agent as Policy / Automated / RoboHouse.
+- Browser entry01:30:53.7433 UTC; Run01:30:54.806. Measured completion83.888 s
+  after click. Both15-second targets missed, with no research exception.
+- Fresh leased frames arrived13.4 s after server creation; first native image
+  completion75.5 s. Exact cause of the intervening delay is unverified. Later
+  image views completed promptly. Motion remained blocked on the coding agent's
+  image inspection; no fake startup movement or automatic motion retry.
+- Generated Python made one relative+0.04 rad left joint0 request. Measured
+  delta+0.038529 rad; no gripper command. Fresh post-action images were inspected.
+- Actual retained source-video replay92.125 s, normal UI playback verified.
+  The38 s timed screen record proves no method-driven motion within15 s; motion
+  occurred later and is retained in the robot replay. Full visual onset timing
+  is unverified. Receipts and generated program are retained in the chat bundle.
+- Next candidate warms only the native worker during admission and supplies the
+  fresh leased scene directly as its first model input, avoiding the additional
+  pre-admission-to-leased inference handoff. Physical acceptance remains pending.
