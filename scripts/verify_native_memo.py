@@ -13,6 +13,8 @@ from agp_remote_yam import mock
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('--data', type=Path, required=True)
 p.add_argument('--config', type=Path, default=Path('/etc/memo-remote-codex.json'))
+p.add_argument('--runner-name', required=True, help='Confirmed human initiating this verification')
+p.add_argument('--runner-email', required=True, help='Confirmed email; retained only in private verification data')
 a = p.parse_args()
 a.data.mkdir(parents=True, exist_ok=True)
 config = json.loads(a.config.read_text())
@@ -46,16 +48,18 @@ class DelayedStation(original):
 
 mock.MockStation = DelayedStation
 owner = 'automated-native-'+uuid.uuid4().hex
-runner = dict(kind='automated', name='Automated')
+runner = dict(kind='human', name=a.runner_name, email=a.runner_email)
 receipts = []
 
 
 def execute(task, corrections=()):
     started = time.monotonic()
-    rid = manager.start(task, owner, duration=180, runner=runner, memo=True)
+    rid = manager.start(task, owner, duration=180, runner=runner, memo=True,
+                        execution_mode='automated_test')
     for i, content in enumerate(corrections):
         manager.correct(rid, owner, content, 'native-fixture-'+str(i))
-    print(json.dumps(dict(phase='run', run_id=rid, approach='MEMO', runner=runner, physical=False)), flush=True)
+    print(json.dumps(dict(phase='run', run_id=rid, approach='MEMO', runner_name=a.runner_name,
+                         execution_mode='automated_test', physical=False)), flush=True)
     seen = -1
     while rid in manager.active:
         value = manager.detail(rid, owner, seen)
@@ -77,7 +81,7 @@ def execute(task, corrections=()):
         elapsed_s=time.monotonic()-started, first_mock_completion_s=motions[0]['time']-value['created_at'],
         outcome=value['outcome'], memory_version=value['memory_version'], events=value['events'])
     receipts.append(receipt)
-    print(json.dumps({k:v for k,v in receipt.items() if k != 'events'}), flush=True)
+    print(json.dumps({k:v for k,v in receipt.items() if k not in ('events', 'runner')}), flush=True)
     return value
 
 
