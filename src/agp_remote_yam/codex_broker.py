@@ -45,9 +45,12 @@ lease. Read fresh leased state before choosing targets, and get fresh images or
 depth whenever changed conditions or uncertainty require them. For physical
 actions, inspect fresh post-homing images before the first movement. Initial
 image inputs labelled phase=leased already show the settled post-homing scene;
-inspect these directly, without fetching duplicate views. If initial inputs
-precede admission or the scene changes, inspect new leased images with the image
-tool. Never capture unseen new images and move in one script.
+inspect these directly, without fetching duplicate views. When initial inputs
+precede admission, draft a compact candidate program while waiting, then make a
+separate read-only state request. The host appends fresh leased images before
+that request returns. Inspect them, then execute or revise the draft in a NEW
+coding tool call. Never combine the admission wait and motion in one script.
+When the scene changes again, inspect new views with the image tool.
 Never invent
 calibration, motion evidence or task success. A failed or timed-out movement
 must never be retried automatically. Respect Stop. Use coding and image tools
@@ -157,6 +160,15 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                 process.stdin.flush()
             environment = 'agp-' + uuid.uuid4().hex
             pending = b'';final = None;deadline = time.monotonic()+timeout;ready_deadline = 0
+            active_turn = None; observation_sent = False; observation_accepted = False
+            pending_observation = None; leased_message_seen = False; reviewed = False
+            def steer():
+                nonlocal observation_sent
+                if active_turn and pending_observation is not None and not observation_sent:
+                    request(6, 'turn/steer', dict(threadId=thread, expectedTurnId=active_turn,
+                        input=[dict(type='text', text=pending_observation['prompt'])] +
+                              [dict(type='image', url=image) for image in pending_observation['images']]))
+                    observation_sent = True
             request(1, 'initialize', dict(clientInfo=dict(name='agp_remote_yam', version='0.2.0'),
                                          capabilities=dict(experimentalApi=True)))
             try:
@@ -168,7 +180,14 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                             raise RuntimeError('Harness diagnostic limit')
                         for key, _ in poll.select(.2):
                             if key.data == 'client':
-                                raise EOFError('Client disconnected or sent unexpected data')
+                                update = receive(sock)
+                                if (pending_observation is not None or not isinstance(update, dict)
+                                        or set(update) != {'op', 'prompt', 'images'} or update['op'] != 'observation'):
+                                    raise ValueError('Invalid leased observation update')
+                                pending_observation = validate(dict(value, op='coding',
+                                    protocol='agp-codex-remote-v1', prompt=update['prompt'], images=update['images']))
+                                steer()
+                                continue
                             data = os.read(process.stdout.fileno(), 65536)
                             if not data:
                                 raise RuntimeError('Codex harness stopped')
@@ -225,7 +244,25 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                                         input=[dict(type='text', text=value['prompt'])] +
                                               [dict(type='image', url=image) for image in value.get('images', [])],
                                         outputSchema=RESULT_SCHEMA))
+                                elif identity == 4:
+                                    active_turn = message.get('result', {}).get('turn', {}).get('id')
+                                    steer()
+                                elif identity == 6:
+                                    if message.get('result', {}).get('turnId') != active_turn:
+                                        raise RuntimeError('Leased images were not accepted by this coding turn')
+                                    observation_accepted = True
+                                    profile('leased_images_accepted')
+                                    send(sock, dict(observation_accepted=True))
                                 method = message.get('method');params = message.get('params', {})
+                                item = params.get('item', {})
+                                if (method == 'item/completed' and item.get('type') == 'userMessage'
+                                        and any(isinstance(v, dict) and v.get('text', '').startswith('[LEASED_OBSERVATION]')
+                                                for v in item.get('content', []))):
+                                    leased_message_seen = True
+                                if (method == 'item/started' and item.get('type') == 'commandExecution'
+                                        and observation_accepted and leased_message_seen and not reviewed):
+                                    reviewed = True
+                                    send(sock, dict(event=dict(type='agp.leased_images.reviewed', at=time.time())))
                                 if method == 'item/completed' and params.get('item', {}).get('type') == 'agentMessage':
                                     text = params['item']['text']
                                     send(sock, dict(event=dict(type='item.completed', item=dict(type='agent_message', text=text))))

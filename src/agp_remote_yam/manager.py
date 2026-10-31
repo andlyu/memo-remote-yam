@@ -164,9 +164,16 @@ class RunManager:
                     except Exception as exc:
                         journal.add("worker", "Robot calibration preparation failed", error_type=type(exc).__name__)
                 threading.Thread(target=prepare_backend, name="agp-calibration", daemon=True).start()
-                # Warm the executor during admission, then give the model the
-                # settled leased scene as its first input. A parked scene would
-                # require another vision/inference handoff after Home.
+                def prime():
+                    try:
+                        from .observation import ScenePreview
+                        preview = factory(policy) if self.settings.offline else ScenePreview(
+                            self.settings.origin, robot_id, directory / "workspace", policy, journal)
+                        runtime.prime(preview, monitor.get("observation", monitor.get("payload", monitor)))
+                    except Exception as exc:
+                        journal.add("worker", "Read-only pre-admission observations unavailable",
+                                    error_type=type(exc).__name__)
+                threading.Thread(target=prime, name="agp-initial-scene", daemon=True).start()
             if context["stopped"].is_set():
                 controller.stop("user_requested")
             previous = None

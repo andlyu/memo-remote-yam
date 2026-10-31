@@ -126,3 +126,26 @@ def test_python_helper_uses_original_client_and_never_replays_an_attempt(tmp_pat
         assert run.returncode!=0 and 'FileExistsError' in run.stderr
         assert calls==[('right','state',{}),('left','move_joints',{'joints':[0]*6})]
     finally:stopped.set();bridge.thread.join(2)
+
+
+def test_waiting_script_cannot_move_before_new_post_image_coding_step(tmp_path):
+    _,directory=RunStore(tmp_path).create('image handoff boundary')
+    root=directory/'workspace';calls=[];stopped=threading.Event();reviewed=threading.Event()
+    bridge=FileBridge(root,SimpleNamespace(command=lambda arm,cmd,args:(calls.append(cmd) or dict(fresh=True))),
+                      Journal(directory),stopped,motion_ready=reviewed.is_set)
+    bridge.start()
+    def call(command):
+        result=subprocess.run([sys.executable,'robot_client.py','.',command,'{}'],cwd=root,
+                              capture_output=True,text=True,timeout=5)
+        return json.loads(result.stdout)
+    try:
+        assert call('state')['ok']
+        blocked=call('move_joints')
+        assert not blocked['ok'] and blocked['retryable'] is False
+        assert calls==['state']
+        reviewed.set()
+        # A distinct request from a new coding step is accepted. The rejected
+        # request is consumed permanently and never released or replayed.
+        assert call('move_joints')['ok']
+        assert calls==['state','move_joints']
+    finally:stopped.set();bridge.thread.join(2)

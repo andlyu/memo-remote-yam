@@ -350,3 +350,29 @@ physical AgP integration and passing software tests do not erase those misses.
 - Next candidate warms only the native worker during admission and supplies the
   fresh leased scene directly as its first model input, avoiding the additional
   pre-admission-to-leased inference handoff. Physical acceptance remains pending.
+
+### Latency acceptance attempt 6 — confirmed identity, target missed
+
+- Source8726df0b41a1320c09da8c5da093852bcfba5fa6; run
+  `acd61c80584d49c6b6e984a0a86a3ba8`. Normal human form, Andrew with the
+  user-confirmed full email; email omitted from this public audit. Browser
+  automation entered the confirmed identity; this is not an independent novice
+  usability study. A preceding recorder lookup failure submitted no Run.
+- Entry01:39:16.0701 UTC; Run01:39:16.810. First generated trajectory17.743 s
+  after server creation. Measured completion19.335 s after click /20.075 s entry.
+  Both timing requirements missed; no exception.
+- Leased running11.250 s, fresh leased initial images13.259 s, first generated
+  coding command17.373 s. The program calculated the+0.04 rad target from fresh
+  state and executed once. Fresh measured delta+0.038148 rad; grippers preserved.
+- Four live views, correct human attribution and retained28.125 s physical replay
+  are available. Timed screen evidence includes the full execution. Video lag
+  makes visual onset later than physical submission; it is not subtracted.
+- Next candidate overlaps program drafting with admission, appends fresh leased
+  images using native turn/steer, and rejects motion until a new coding step
+  after that image message. Actual-model mock `14eb5e4b3bcb486690adef25ddfbd969`
+  completed one relative move in12.333 s including a10 s admission wait. It is
+  explicitly nonphysical.91 adapter tests passed in35.85 s with other local work
+  overlapping;27 focused handoff/bridge/runtime tests passed in31.15 s.
+- Camera timestamps independently showed a public publisher edge already about
+  2 s behind wall time; the new viewer uses labelled real API snapshots when
+  rendered video is delayed. Physical and visual acceptance are still pending.

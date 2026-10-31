@@ -17,7 +17,7 @@
     const video = document.getElementById("camera-video"), label = document.getElementById("camera-state");
     const play = document.getElementById("camera-play"), atlas = document.createElement("canvas");
     const context = atlas.getContext("2d", {alpha:false});
-    const tiles = roles.map(role => ({role, canvas:document.getElementById("camera-" + role)}));
+    const tiles = roles.map(role => ({role, canvas:document.getElementById("camera-" + role), loading:false, snapshotAt:0, requestedAt:-Infinity}));
     const stream = config.video_stream;
     let hls, timer, animation, stopped = false, frames = 0, lastTime = -1, lastPaint = -Infinity, lastAdvance = performance.now();
     let status = "Connecting to public camera stream";
@@ -27,17 +27,26 @@
       if (target.height !== height) target.height = height;
       target.getContext("2d", {alpha:false}).drawImage(source, ...rect, 0, 0, width, height);
     }
-    // Real API stills are used only while the same public viewer stream joins.
-    // Mock robot execution never substitutes synthetic preview images.
-    for (const tile of tiles) {
+    // Public snapshots also keep the arms current when the video publisher is
+    // delayed. One request per view may be in flight, at most 2.5 fps. These
+    // independent views are labelled as such; model captures stay separate.
+    let snapshots = true;
+    function snapshot(tile, now) {
+      if (tile.loading || now-tile.requestedAt < 400) return;
+      tile.loading=true;tile.requestedAt=now;
       const image = new Image();
       image.onload = () => {
-        if (stopped || frames) return;
-        draw(tile.canvas, image, [0,0,image.naturalWidth,image.naturalHeight]);
-        tile.canvas.dataset.frameSource = config.camera_source === "synthetic" ? "synthetic" : "api_snapshot";
+        tile.loading=false;
+        if (stopped || !snapshots) return;
+        draw(tile.canvas,image,[0,0,image.naturalWidth,image.naturalHeight]);
+        tile.snapshotAt=performance.now();lastAdvance=tile.snapshotAt;
+        tile.canvas.dataset.frameSource=config.camera_source==="synthetic"?"synthetic":"api_snapshot";
+        tile.canvas.dataset.presentedFrame=String(Number(tile.canvas.dataset.presentedFrame||0)+1);
       };
-      image.src = "/api/cameras/" + tile.role + ".jpg?robot_id="+encodeURIComponent(config.robot_id);
+      image.onerror=()=>{tile.loading=false;};
+      image.src="/api/cameras/"+tile.role+".jpg?robot_id="+encodeURIComponent(config.robot_id)+"&frame="+Date.now();
     }
+    for(const tile of tiles)snapshot(tile,performance.now());
     if (config.camera_source === "synthetic") { label.textContent = "Synthetic camera fixtures · offline test"; return; }
     if (!stream) { label.textContent = "Public API snapshots · no video stream configured"; return; }
     function cleanup() {
@@ -70,7 +79,16 @@
     }
     function paint(now) {
       if (stopped) return;
-      if (!document.hidden && video.readyState >= 2 && video.currentTime !== lastTime && now - lastPaint >= 125) {
+      const playingDate=hls?.playingDate;
+      const lag=playingDate instanceof Date?(Date.now()-playingDate.getTime())/1000:null;
+      snapshots=video.readyState<2 || (Number.isFinite(lag)&&lag>2);
+      if(!document.hidden&&snapshots){
+        for(const tile of tiles)snapshot(tile,now);
+        const current=tiles.every(tile=>now-tile.snapshotAt<3000&&tile.snapshotAt>0);
+        status=current?"Live camera snapshots · independent views":"Waiting for fresh public camera snapshots";
+        video.dataset.publisherLagSeconds=Number.isFinite(lag)?lag.toFixed(2):"unknown";
+      }
+      if (!document.hidden && !snapshots && video.readyState >= 2 && video.currentTime !== lastTime && now - lastPaint >= 125) {
         const width = video.videoWidth, height = video.videoHeight;
         if (atlas.width !== width) atlas.width = width;
         if (atlas.height !== height) atlas.height = height;
@@ -88,7 +106,7 @@
         play.hidden = true;
       }
       if (performance.now() - lastAdvance > 20000) retry();
-      label.textContent = frames ? status : "API snapshots · " + status.toLowerCase();
+      label.textContent = snapshots ? status : frames ? status : "Connecting to public cameras";
       animation = requestAnimationFrame(paint);
     }
     play.onclick = () => video.play().catch(() => {status = "Press play to resume cameras";});

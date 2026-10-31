@@ -75,11 +75,18 @@ The broker uses that account's normal auth cache directly. Do not copy the
 cache into the worker, image or run workspace. Set `HOME`, `XDG_RUNTIME_DIR`
 and the user bus for rootless Podman in the worker service environment.
 
-The native executor and ephemeral thread warm while the controller admits the
-run. The first model input contains fresh leased post-homing images and measured
-state. The agent still writes its own Python, reads fresh state when it executes,
-and verifies with new observations. No canned movement counts as startup work.
-Tool start/completion timestamps distinguish model waits from tool execution.
+The native worker plans from read-only scene context while the controller admits
+the run. Fresh leased post-homing images are then appended to the same native
+turn, before pending state reads are released. Motion requires a new coding tool
+call after that image message is accepted. A waiting script cannot proceed
+directly into movement. The agent writes its own Python, computes targets from
+fresh state, and verifies with new observations. No canned movement counts as
+startup work. Tool timestamps distinguish model waits from tool execution.
+
+The camera viewer uses the public video atlas while it is current. When its
+program-date-time is more than2 seconds behind, bounded public JPEG reads keep
+the independent camera views current. The UI labels these as snapshots. This
+does not change the agent's fresh camera/depth requests or retained run video.
 
 ## Service protocol
 

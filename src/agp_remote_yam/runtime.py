@@ -38,6 +38,7 @@ class AgentRuntime:
         self.backend_ready = threading.Event()
         self.initial_ready = threading.Event()
         self.thread = None
+        self.leased_reviewed = threading.Event()
 
     def check_available(self):
         binary = {"docker": "docker", "remote": "podman"}.get(self.mode, self.executable)
@@ -87,8 +88,20 @@ class AgentRuntime:
         if self.mode == "demo":
             (self.workspace / "demo_agent.py").write_bytes(files("agp_remote_yam").joinpath("assets/demo_agent.py").read_bytes())
         Workspace(self.workspace).json("RESULT_SCHEMA.json", RESULT_SCHEMA)
+        handoff = self.mode == "remote" and hasattr(self, "initial_backend")
+        if handoff:
+            from .observation import initial_input
+            snapshot = initial_input(backend)
+            Workspace(self.directory).json("leased-input.json", snapshot)
+            deadline = time.monotonic() + 10
+            while not (self.directory / "leased-input-accepted.json").is_file():
+                if self.stopped.wait(.025):
+                    return
+                if self.finished.is_set() or time.monotonic() > deadline:
+                    raise RuntimeError("Coding worker did not accept fresh leased images")
         self.bridge = FileBridge(self.workspace, backend, self.journal, self.stopped, self.memory,
-                                 admitting=self.mode == "remote")
+                                 admitting=self.mode == "remote",
+                                 motion_ready=self.leased_reviewed.is_set if handoff else None)
         self.backend = backend
         self.bridge.start()
         self.backend_ready.set()
@@ -197,9 +210,14 @@ class AgentRuntime:
                            "never use the pre-admission joint pose as an action target. Reobserve images when changed arm "
                            "configuration or scene uncertainty affects the action. Motion requests made before admission "
                            "are rejected. There is no permission to move before the lease is active. "
-                           "For a physical run, fetch fresh leased images after homing and inspect them with the image "
-                           "tool before choosing the first movement. Do not capture unseen fresh images and move in "
-                           "the same script. Pre-admission views are planning context, not visual approval of the homed pose.")
+                           "The host will append fresh post-homing leased images to this same coding turn before "
+                           "releasing pending read requests. Draft a compact candidate movement program now, then "
+                           "make a separate read-only state request to wait for admission. After that tool returns, "
+                           "inspect the appended leased images and decide whether to execute or revise your draft. "
+                           "Do not place a state-wait and movement in one pre-admission script; motion requires a "
+                           "new coding tool call after receipt of the leased images. Do not fetch duplicate views "
+                           "when the supplied fresh leased images suffice. Pre-admission views are planning context, "
+                           "not visual approval of the homed pose.")
             self.journal.add("initial_observation", "Fresh state and camera views supplied to the coding agent",
                              context=snapshot["context"], duration_s=round(time.monotonic()-started, 3))
         return prompt
@@ -258,6 +276,9 @@ class AgentRuntime:
                 if event.get("type") == "agp.profile":
                     self.journal.add("worker_profile", "Coding worker: " + str(event.get("stage")),
                                      profile=event)
+                if event.get("type") == "agp.leased_images.reviewed":
+                    self.leased_reviewed.set()
+                    self.journal.add("leased_images_reviewed", "Coding agent began a new step after receiving fresh leased images")
                 if event.get("type") in ("agp.tool.started", "agp.tool.completed"):
                     phase = event["type"].rsplit(".", 1)[1]
                     self.journal.add("coding_tool", "Coding agent " + phase + " " + str(event.get("tool")),

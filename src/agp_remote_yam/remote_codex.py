@@ -14,6 +14,7 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 
 MAX_FRAME = 8_000_000
@@ -124,6 +125,8 @@ def main():
         raise SystemExit(128 + signum)
     signal.signal(signal.SIGTERM, stopped)
     signal.signal(signal.SIGINT, stopped)
+    watching = threading.Event()
+    watcher = None
     try:
         url, token = executor.start()
         profile('executor_ready')
@@ -150,6 +153,25 @@ def main():
             if snapshot is not None:
                 message['images'] = snapshot['images']
             send(sock, {k: message[k] for k in ('prompt', 'images') if k in message} if args.prepare else message)
+            def leased_input():
+                # This sidecar is outside /work and cannot be written by model
+                # code. Only the host's active leased backend supplies it.
+                path = workspace.parent / 'leased-input.json'
+                while not watching.wait(.025):
+                    if not path.is_file():
+                        continue
+                    from .workspace import Workspace
+                    update = json.loads(Workspace(workspace.parent).read(path.name, 5_000_000))
+                    text = ('[LEASED_OBSERVATION] Fresh settled post-homing scene and measured state. '
+                            'Inspect these supplied images now, then choose to execute or revise your candidate '
+                            'program in a new coding tool call. Read fresh state inside the movement program. '
+                            'Do not duplicate captures unless changed conditions require it.\n'
+                            + json.dumps(update['context']))
+                    send(sock, dict(op='observation', prompt=text, images=update['images']))
+                    return
+            if snapshot is not None and snapshot['context'].get('phase') == 'monitor_before_admission':
+                watcher = threading.Thread(target=leased_input, name='agp-leased-images', daemon=True)
+                watcher.start()
             while True:
                 value = receive(sock)
                 if 'event' in value:
@@ -158,9 +180,15 @@ def main():
                     from .workspace import Workspace
                     Workspace(workspace).json('FINAL.json', value['result'])
                     break
+                elif value.get('observation_accepted') is True:
+                    from .workspace import Workspace
+                    Workspace(workspace.parent).json('leased-input-accepted.json', dict(accepted_at=time.time()))
                 else:
                     raise RuntimeError('Remote coding broker did not complete the turn')
     finally:
+        watching.set()
+        if watcher is not None:
+            watcher.join(.5)
         executor.close()
 
 

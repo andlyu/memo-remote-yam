@@ -11,12 +11,13 @@ from .workspace import Workspace
 
 
 class FileBridge:
-    def __init__(self, workspace, backend, journal, stopped, memory=None, *, admitting=False):
+    def __init__(self, workspace, backend, journal, stopped, memory=None, *, admitting=False, motion_ready=None):
         self.workspace = Workspace(workspace)
         self.backend, self.journal, self.stopped = backend, journal, stopped
         self.thread = None
         self.memory = memory
         self.admitting = admitting
+        self.motion_ready = motion_ready
 
     def start(self):
         # Only read requests may wait across admission. A pre-lease action must
@@ -60,6 +61,9 @@ class FileBridge:
                             raise ValueError("Invalid AgP command")
                         if (arm, name) in self.before_admission and command not in ("state", "frames", "status", "help"):
                             raise ValueError("Motion was requested before lease admission; command rejected and not replayed")
+                        if (arm != "memo" and command in ("move_joints", "move_ee", "gripper")
+                                and self.motion_ready is not None and not self.motion_ready()):
+                            raise ValueError("A new coding step after the leased images is required; motion rejected and not replayed")
                         self.journal.add("tool_call", command, arm=arm, arguments=arguments)
                         if arm == "memo":
                             result = self.memory.command(command, arguments)

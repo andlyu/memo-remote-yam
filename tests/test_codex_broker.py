@@ -19,12 +19,12 @@ def test_broker_rejects_endpoint_and_cli_overrides():
         with pytest.raises(ValueError):validate(value()|changes)
 
 
-@pytest.mark.parametrize('prepared', [False, True])
+@pytest.mark.parametrize('prepared,handoff', [(False,False), (True,False), (True,True)])
 @pytest.mark.parametrize('model,effort',[('gpt-6-astra','low'),('gpt-6-luna','none')])
-def test_native_environment_handshake_and_result(tmp_path, prepared, model, effort):
+def test_native_environment_handshake_and_result(tmp_path, prepared, handoff, model, effort):
     home=tmp_path/'home';(home/'workspace').mkdir(parents=True)
     binary=tmp_path/'codex-fixture'
-    binary.write_text('#!'+sys.executable+'\n'+f'EXPECTED_MODEL={model!r}\nEXPECTED_EFFORT={effort!r}\n'+'''
+    binary.write_text('#!'+sys.executable+'\n'+f'EXPECTED_MODEL={model!r}\nEXPECTED_EFFORT={effort!r}\nHANDOFF={handoff!r}\n'+'''
 import json,sys
 assert 'features.shell_tool=true' in sys.argv
 assert 'features.unified_exec=true' in sys.argv
@@ -50,10 +50,19 @@ for line in sys.stdin:
  if i==3:
   assert p['environments'][0]['cwd']=='/work' and p['ephemeral']
   assert p['model']==EXPECTED_MODEL
- emit(dict(id=i,result={'thread':{'id':'fixture'}} if i==3 else {}))
+ emit(dict(id=i,result={'thread':{'id':'fixture'}} if i==3 else {'turn':{'id':'fixture-turn'}} if i==4 else {'turnId':'fixture-turn'} if i==6 else {}))
  if i==4:
   assert warming==2
   assert p['outputSchema']['properties']['status']['enum']==['continue','done','give_up']
+  if HANDOFF:
+   emit(dict(method='item/started',params=dict(item=dict(type='commandExecution'))));continue
+ if i==6:
+  assert HANDOFF and p['expectedTurnId']=='fixture-turn' and p['threadId']=='fixture'
+  assert p['input'][0]['text'].startswith('[LEASED_OBSERVATION]')
+  assert p['input'][1]['type']=='image'
+  emit(dict(method='item/completed',params=dict(item=dict(type='userMessage',content=p['input']))))
+  emit(dict(method='item/started',params=dict(item=dict(type='commandExecution'))))
+ if i==4 or i==6:
   emit(dict(method='item/started',params=dict(item=dict(type='imageView',path='/work/frames/fresh.png',privateText='not forwarded'))))
   emit(dict(method='item/completed',params=dict(item=dict(type='imageView',path='/work/frames/fresh.png',privateText='not forwarded'))))
   result=dict(status='done',summary='Offline fixture complete',evidence=[])
@@ -75,6 +84,18 @@ for line in sys.stdin:
         if prepared:
             assert event==dict(prepared=True)
             send(right,dict(prompt='offline fixture'))
+            event=receive(right)
+        if handoff:
+            assert event['event']['type']=='agp.tool.started' and event['event']['tool']=='commandExecution'
+            import base64
+            from agp_remote_yam.mock import preview
+            send(right,dict(op='observation',prompt='[LEASED_OBSERVATION] fixture',
+                            images=['data:image/jpeg;base64,'+base64.b64encode(preview()).decode()]))
+            assert receive(right)['event']['stage']=='leased_images_accepted'
+            assert receive(right)==dict(observation_accepted=True)
+            assert receive(right)['event']['tool']=='userMessage'
+            assert receive(right)['event']['type']=='agp.leased_images.reviewed'
+            assert receive(right)['event']['tool']=='commandExecution'
             event=receive(right)
         assert event['event']['type']=='agp.tool.started'
         assert event['event']['path']=='/work/frames/fresh.png'
