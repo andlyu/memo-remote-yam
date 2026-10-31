@@ -1,0 +1,216 @@
+{
+  "status": "passed",
+  "model": "gpt-6-luna",
+  "approach": "MEMO",
+  "physical": false,
+  "admission_wait_s": 10,
+  "retrieved_memory_ids": [
+    1,
+    2,
+    3
+  ],
+  "physical_motion_verified": false,
+  "label": "Actual model and semantic MEMO with mock arms only; no physical lease or notifications",
+  "runs": [
+    {
+      "run_id": "14a25bb2111049d69da1310db0729796",
+      "physical": false,
+      "elapsed_s": 40.11128495493904,
+      "first_mock_completion_s": 19.073745250701904,
+      "outcome": {
+        "status": "done",
+        "summary": "Executed one mock-only left joint 0 move using fresh measured state, verified the +0.02 rad delta, and saved separate MOVE(LEFT_JOINT_0) guidance for both owner corrections plus a parameterized template. No physical success is claimed.",
+        "evidence": [
+          "Pre-motion fresh state: left joints [0.0, 0.7941248096574199, 0.4886921905584123, 0.0, 0.19198621771937624, 0.0].",
+          "Single exclusive move target: [0.02, 0.7941248096574199, 0.4886921905584123, 0.0, 0.19198621771937624, 0.0]; completion measured the same target and retained gripper fraction 0.5.",
+          "Fresh post-motion state confirmed joint 0 = 0.02 and all other joints unchanged. Post-motion mock top/wrist images: frames/0005_left_top.png and frames/0005_left_wrist.png.",
+          "Saved parameterized function in scratch/skill.py and MEMO template id 3; saved paraphrased correction guidance ids 1 and 2. MEMO marks entries agent-authored/unverified."
+        ]
+      },
+      "memory_version": 0,
+      "handoff_stages": [
+        {
+          "time": 1793427621.3691561,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "executor_ready",
+            "elapsed_s": 1.173
+          }
+        },
+        {
+          "time": 1793427621.9289825,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "initialized",
+            "at": 1793427621.9286056,
+            "elapsed_s": 0.549
+          }
+        },
+        {
+          "time": 1793427621.942696,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "environment_registered",
+            "at": 1793427621.9415293,
+            "elapsed_s": 0.562
+          }
+        },
+        {
+          "time": 1793427622.440207,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "environment_ready",
+            "at": 1793427622.4398205,
+            "elapsed_s": 1.06
+          }
+        },
+        {
+          "time": 1793427622.5957515,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "thread_ready",
+            "at": 1793427622.576214,
+            "elapsed_s": 1.196,
+            "model": "gpt-6-luna",
+            "service_tier": "priority",
+            "reasoning_effort": "none"
+          }
+        },
+        {
+          "time": 1793427630.442498,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "preparation_stopped",
+            "at": 1793427630.3898718,
+            "elapsed_s": 9.01
+          }
+        },
+        {
+          "time": 1793427630.484282,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "leased_images_accepted",
+            "at": 1793427630.4832046,
+            "elapsed_s": 9.103
+          }
+        }
+      ],
+      "image_review_times": [
+        1793427633.0338938
+      ]
+    },
+    {
+      "run_id": "43acb730c1ab4c4e8ca49c1be0461517",
+      "physical": false,
+      "elapsed_s": 23.525436975061893,
+      "first_mock_completion_s": 15.88503122329712,
+      "outcome": {
+        "status": "done",
+        "summary": "Retrieved the saved MOVE(LEFT_JOINT_0) MEMO guidance and template. Executed exactly one fresh-state-derived -0.015 radian change to left joint0. No physical robot moved; this was an offline mock.",
+        "evidence": [
+          "Pre-motion leased state: left joints [0.0, 0.7941248096574199, 0.4886921905584123, 0.0, 0.19198621771937624, 0.0]; both grippers measured 0.5.",
+          "The single move target changed only left joint0 to -0.015; completion reported measured settled joints [-0.015, 0.7941248096574199, 0.4886921905584123, 0.0, 0.19198621771937624, 0.0] and gripper remained 0.5.",
+          "Fresh post-motion state confirmed the same joint values. Fresh RGB top and wrist captures (frames/0005_left_top.png, frames/0005_left_wrist.png) showed the mock scene; state and captures report physical=false."
+        ]
+      },
+      "memory_version": 3,
+      "handoff_stages": [
+        {
+          "time": 1793427660.907097,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "executor_ready",
+            "elapsed_s": 1.264
+          }
+        },
+        {
+          "time": 1793427661.1060503,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "initialized",
+            "at": 1793427661.1056874,
+            "elapsed_s": 0.196
+          }
+        },
+        {
+          "time": 1793427661.1157622,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "environment_registered",
+            "at": 1793427661.1142254,
+            "elapsed_s": 0.205
+          }
+        },
+        {
+          "time": 1793427661.1819127,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "environment_ready",
+            "at": 1793427661.1616783,
+            "elapsed_s": 0.252
+          }
+        },
+        {
+          "time": 1793427661.3373682,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "thread_ready",
+            "at": 1793427661.3370001,
+            "elapsed_s": 0.427,
+            "model": "gpt-6-luna",
+            "service_tier": "priority",
+            "reasoning_effort": "none"
+          }
+        },
+        {
+          "time": 1793427671.420152,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "preparation_stopped",
+            "at": 1793427671.4191043,
+            "elapsed_s": 10.51
+          }
+        },
+        {
+          "time": 1793427671.6562479,
+          "profile": {
+            "type": "agp.profile",
+            "stage": "leased_images_accepted",
+            "at": 1793427671.655548,
+            "elapsed_s": 10.746
+          }
+        }
+      ],
+      "image_review_times": [
+        1793427673.7193828
+      ]
+    }
+  ],
+  "refinement": {
+    "id": "aacf70105d6e4dcb8a08be55c5b7347c",
+    "outcome": {
+      "status": "done",
+      "summary": "Consolidated the two genuinely redundant left-joint-0 guidance entries. Kept the related template separate, since it is a different kind. No robot client or skill was executed.",
+      "evidence": [
+        "`memo_client.py list` showed guidance IDs 1 and 2 and template ID 3, all for `MOVE(LEFT_JOINT_0)`.",
+        "`memo_client.py consolidate` created guidance ID 4 with parents/source IDs 1 and 2; its guidance preserves the fresh-measurement, joint, arm, gripper, and no-retry constraints.",
+        "The attempted consolidation including template ID 3 was rejected because sources must be of the same kind; no mixed-kind consolidation was made.",
+        "Saved the parameterized template source to `scratch/skill.py`; it was not submitted as new physical validation."
+      ]
+    },
+    "mode": "offline_memory"
+  },
+  "learned_kinds": [
+    "template",
+    "guidance",
+    "guidance"
+  ],
+  "final_memory_parent_links": [
+    [
+      1,
+      2
+    ],
+    []
+  ],
+  "broker_sha256": "71ebc23e2adbb62408e09c9bbab1cb7c31853d2bfda3fd1d9375aed2e11ef1d2"
+}

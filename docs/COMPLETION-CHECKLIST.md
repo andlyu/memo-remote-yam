@@ -119,7 +119,7 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
 
 - [x] A usable website exists, with an associated repository containing the
   website's source code. Record both links and the deployed source revision.
-- [ ] Everything in the playground demo is public by default, including the
+- [x] Everything in the playground demo is public by default, including the
   website, source repository, runs/results, live demos, recordings, replays/history,
   simulation outputs and supporting evidence. Any nonpublic exception reflects
   an explicit user instruction or visibility change, recorded below.
@@ -165,7 +165,7 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
   Homing/preparation motion does not count. Verify and record both full elapsed
   times for every run; a sampled demonstration is insufficient. Apply only the
   documented GPU-launch or research-grounded exceptions below.
-- [ ] Every meaningful wait after a website action is immediately explained in
+- [x] Every meaningful wait after a website action is immediately explained in
   a persistent inline status/progress area at that action (below Run in the run
   panel for launches). Show the current stage, a plain-language reason and real
   stage completion, with honest failure/stall status and available recovery.
@@ -579,3 +579,38 @@ availability were verified; a deployed failed/stalled worker was not deliberatel
 created or claimed as tested. Simulation: no simulated task rollout; predictive
 MuJoCo kinematics/contact validation is retained, not presented as a simulated
 execution. No active physical run remains. No overall completion claim.
+
+
+## Live public/recovery evidence — October30,2026 (05:54 UTC October31)
+
+12/15 requirements verified (80.0%) under1619d7f. Public cookie-free history,
+three run details, generated scratch programs and ranged physical video all
+returned200/206; all contacts redacted. Offline refinement is publicly readable
+with Model MEMO. Physical run mutation and skillbook controls remain owner-only
+(privacy/control regression passed). Live UI SHA256
+4b4e174f3ca02c84a33bc17013951484ec5c084a3db0def1d0ca3efc3ad6ea9c
+exactly matches tested current source.
+
+Failure/stall/recovery:107 tests passed21.94s. Controlled browser mock fixture
+verified late Home wait status, a failed Stop that remains available, persistent
+unconfirmed-Stop warning across polls/history selection, and recovery after a
+second explicit Stop with Run enabled. The fixture used synthetic cameras, no
+model and no physical robot; it is UI/transport evidence, not physical timing.
+The same UI code is now deployed. Current runtime c073a71; actual-model mock
+proof734ef5e has identical Python adapter/runtime code.
+
+Still open: full Model attribution through the new physical run/notification
+metadata, visual timing correlation (15s postHome/30s postRun), and final
+current-deployment end-to-end physical review. All prior hardware completion
+bounds fit the revised timing rule; the former site-entry15s failure is obsolete.
+
+
+## Leased-image handoff repair — October30,2026 (UTC October31)
+
+Physical trial `a7ce789573534fc2827ab3ab8704e77d` on c073a71 safely rejected its method move; no method motion and no replay of the rejected command. The steer acknowledgement preceded actual image delivery. A new coding command started1793426357.2547464, before the leased user message arrived at~1793426357.900; rejection at1793426357.6329622 preserved the motion gate. Home completed1793426353.522509 after Run1793426341.521. Both method-onset targets failed for this run because no method motion executed; it is retained in public history.
+
+The repair interrupts preparation, explicitly cleans its native background terminals, verifies the terminal list is empty, then starts a fresh coding turn containing leased images. Only a new command in that same turn can satisfy the image-review gate. Native interruption alone does not guarantee a command-completion event or process termination. The pinned robot client, queue/lease, limits, closed image gate and no-automatic-retry behavior remain. Fullsuite108passed23.19s; retained-terminal regression confirms no image acceptance/motion release if cleanup fails.
+
+The previously saved contact was flagged incorrect. The user confirmed a corrected email for future tests; old records are retained. Private contact values are excluded from this public evidence. Score remains12/15 while actual-model verification and current-deployment physical signoff are pending.
+
+Actual native mock verification passed with the same repaired broker hash: runs `14a25bb2111049d69da1310db0729796` and `43acb730c1ab4c4e8ca49c1be0461517`, refinement `aacf70105d6e4dcb8a08be55c5b7347c`. Both runs learned/retrieved corrections and completed one mock movement; fresh-turn image review and preparation-stopped stages are retained in `docs/evidence/2026-10-30-native-handoff.json`. This establishes actual inference and handoff behavior, not physical acceptance.

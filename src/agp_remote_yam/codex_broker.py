@@ -47,9 +47,10 @@ actions, inspect fresh post-homing images before the first movement. Initial
 image inputs labelled phase=leased already show the settled post-homing scene;
 inspect these directly, without fetching duplicate views. When initial inputs
 precede admission, draft a compact candidate program while waiting, then make a
-separate read-only state request. The host appends fresh leased images before
-that request returns. Inspect them, then execute or revise the draft in a NEW
-coding tool call. Never combine the admission wait and motion in one script.
+separate read-only state request. The host interrupts this read-only preparation
+turn, waits for its commands to terminate, and starts a new coding turn with
+fresh leased images. Inspect them, then execute or revise the saved draft in a
+NEW coding tool call. Never combine the admission wait and motion in one script.
 When the scene changes again, inspect new views with the image tool.
 Never invent
 calibration, motion evidence or task success. A failed or timed-out movement
@@ -160,15 +161,33 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                 process.stdin.flush()
             environment = 'agp-' + uuid.uuid4().hex
             pending = b'';final = None;deadline = time.monotonic()+timeout;ready_deadline = 0
-            active_turn = None; observation_sent = False; observation_accepted = False
-            pending_observation = None; leased_message_seen = False; reviewed = False
-            def steer():
-                nonlocal observation_sent
-                if active_turn and pending_observation is not None and not observation_sent:
-                    request(6, 'turn/steer', dict(threadId=thread, expectedTurnId=active_turn,
-                        input=[dict(type='text', text=pending_observation['prompt'])] +
-                              [dict(type='image', url=image) for image in pending_observation['images']]))
-                    observation_sent = True
+            active_turn = None; observation_accepted = False
+            pending_observation = None; leased_message_turn = None; reviewed = False
+            interrupt_requested = False; preparation_done = False; leased_turn_requested = False
+            cleanup_requested = False; preparation_clean = False
+            def handoff():
+                nonlocal interrupt_requested, leased_turn_requested, cleanup_requested, final
+                if not active_turn or pending_observation is None or leased_turn_requested:
+                    return
+                if not preparation_done:
+                    if not interrupt_requested:
+                        request(6, 'turn/interrupt', dict(threadId=thread, turnId=active_turn))
+                        interrupt_requested = True
+                    return
+                # Interrupting unified exec can leave background processes alive
+                # and omit item/completed. Explicitly stop this thread's terminals
+                # and verify none remain before enabling a fresh coding turn.
+                if not preparation_clean:
+                    if not cleanup_requested:
+                        request(8, 'thread/backgroundTerminals/clean', dict(threadId=thread))
+                        cleanup_requested = True
+                    return
+                final = None
+                request(7, 'turn/start', dict(threadId=thread,
+                    input=[dict(type='text', text=pending_observation['prompt'])] +
+                          [dict(type='image', url=image) for image in pending_observation['images']],
+                    outputSchema=RESULT_SCHEMA))
+                leased_turn_requested = True
             request(1, 'initialize', dict(clientInfo=dict(name='agp_remote_yam', version='0.2.0'),
                                          capabilities=dict(experimentalApi=True)))
             try:
@@ -186,7 +205,7 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                                     raise ValueError('Invalid leased observation update')
                                 pending_observation = validate(dict(value, op='coding',
                                     protocol='agp-codex-remote-v1', prompt=update['prompt'], images=update['images']))
-                                steer()
+                                handoff()
                                 continue
                             data = os.read(process.stdout.fileno(), 65536)
                             if not data:
@@ -204,6 +223,11 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                                     request(5, 'environment/info', dict(environmentId=environment))
                                     continue
                                 if 'error' in message:
+                                    if message.get('id') == 6 and pending_observation is not None:
+                                        # A preparation turn can finish while interruption
+                                        # is in flight. Its completion/tool events remain
+                                        # required; this never opens the motion gate.
+                                        continue
                                     raise RuntimeError('Codex remote environment request failed')
                                 identity = message.get('id')
                                 if 'method' in message and identity is not None:
@@ -246,28 +270,43 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                                         outputSchema=RESULT_SCHEMA))
                                 elif identity == 4:
                                     active_turn = message.get('result', {}).get('turn', {}).get('id')
-                                    steer()
+                                    handoff()
                                 elif identity == 6:
-                                    if message.get('result', {}).get('turnId') != active_turn:
-                                        raise RuntimeError('Leased images were not accepted by this coding turn')
+                                    # Interruption acknowledgement is not tool completion
+                                    # and is never permission to release robot reads/motion.
+                                    continue
+                                elif identity == 7:
+                                    active_turn = message.get('result', {}).get('turn', {}).get('id')
+                                    if not active_turn:
+                                        raise RuntimeError('Leased coding turn did not start')
                                     observation_accepted = True
                                     profile('leased_images_accepted')
                                     send(sock, dict(observation_accepted=True))
+                                elif identity == 8:
+                                    request(9, 'thread/backgroundTerminals/list', dict(threadId=thread))
+                                elif identity == 9:
+                                    terminals = message.get('result', {})
+                                    if terminals.get('data') != [] or terminals.get('nextCursor') is not None:
+                                        raise RuntimeError('Preparation terminals did not stop')
+                                    preparation_clean = True
+                                    profile('preparation_stopped')
                                 method = message.get('method');params = message.get('params', {})
                                 item = params.get('item', {})
                                 if (method == 'item/completed' and item.get('type') == 'userMessage'
                                         and any(isinstance(v, dict) and v.get('text', '').startswith('[LEASED_OBSERVATION]')
                                                 for v in item.get('content', []))):
-                                    leased_message_seen = True
+                                    leased_message_turn = params.get('turnId')
                                 if (method == 'item/started' and item.get('type') == 'commandExecution'
-                                        and observation_accepted and leased_message_seen and not reviewed):
+                                        and observation_accepted and leased_message_turn == active_turn
+                                        and params.get('turnId') == active_turn and not reviewed):
                                     reviewed = True
                                     send(sock, dict(event=dict(type='agp.leased_images.reviewed', at=time.time())))
                                 if method == 'item/completed' and params.get('item', {}).get('type') == 'agentMessage':
                                     text = params['item']['text']
                                     send(sock, dict(event=dict(type='item.completed', item=dict(type='agent_message', text=text))))
                                     try:
-                                        final = result(json.loads(text))
+                                        if params.get('turnId') == active_turn:
+                                            final = result(json.loads(text))
                                     except (ValueError, TypeError):
                                         pass
                                 elif method in ('item/started', 'item/completed'):
@@ -278,10 +317,17 @@ def execute(sock, value, *, binary, home, timeout=610, model='gpt-6-astra', effo
                                         event['path'] = item['path']
                                     send(sock, dict(event=event))
                                 elif method == 'turn/completed':
+                                    if params.get('turn', {}).get('id') != active_turn:
+                                        continue
+                                    if pending_observation is not None and not leased_turn_requested:
+                                        preparation_done = True
+                                        handoff()
+                                        continue
                                     if params['turn']['status'] != 'completed' or final is None:
                                         raise RuntimeError('Codex did not complete a valid coding result')
                                     send(sock, dict(result=final))
                                     return
+                                handoff()
                         if process.poll() is not None:
                             raise RuntimeError('Codex harness exited')
                     raise TimeoutError('Coding turn exceeded its deadline')

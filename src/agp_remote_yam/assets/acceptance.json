@@ -1,6 +1,6 @@
 {
   "harness_revision": "1619d7f25190ed00c37da6006b3f16c4580eb166",
-  "updated_at": "2026-10-31T05:28:00Z",
+  "updated_at": "2026-10-31T05:54:00Z",
   "requirements": [
     {
       "id": 1,
@@ -9,7 +9,7 @@
     },
     {
       "id": 2,
-      "passed": false,
+      "passed": true,
       "requirement": "Everything in the playground demo is public by default, including the website, source repository, runs/results, live demos, recordings, replays/history, simulation outputs and supporting evidence. Any nonpublic exception reflects an explicit user instruction or visibility change, recorded below."
     },
     {
@@ -69,7 +69,7 @@
     },
     {
       "id": 14,
-      "passed": false,
+      "passed": true,
       "requirement": "Every meaningful wait after a website action is immediately explained in a persistent inline status/progress area at that action (below Run in the run panel for launches). Show the current stage, a plain-language reason and real stage completion, with honest failure/stall status and available recovery. Verify the detailed wait-stage behavior below."
     },
     {
@@ -79,5 +79,5 @@
     }
   ],
   "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/COMPLETION-CHECKLIST.md",
-  "note": "Only checked requirements are counted; historical results retain their original evidence."
+  "note": "12/15 verified. Public artifact access and failure/recovery checks passed. Pending full Model attribution, visual timing and final current-deployment physical signoff."
 }

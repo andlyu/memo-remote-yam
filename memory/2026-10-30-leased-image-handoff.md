@@ -1,0 +1,14 @@
+# MEMO leased-image handoff investigation
+
+- **Symptom:** current-deployment physical run `a7ce789573534fc2827ab3ab8704e77d` homed, then safely rejected the method movement. No automatic retry or method motion occurred.
+- **Root cause:** native `turn/steer` acknowledgement was treated as input delivery. The model began a new command at1793426357.2547464, before the leased-image user message arrived at~1793426357.900. The host gate correctly rejected move_joints at1793426357.6329622.
+- **Fix:** interrupt the read-only preparation turn, wait for turn completion, explicitly clean its background terminals and verify the terminal list is empty, then start a fresh turn containing leased images. Native interruption does not guarantee a command-completion event or process termination. Require both the leased user message and the new command to match the fresh turn ID. Ignore stale turn completion. Preserve the bridge gate and non-replay semantics.
+- **Evidence:** regression fixture failed2cases before repair (6passed;15.36s). Initial fixture-only repair: targeted8passed2.69s; full107passed22.65s. Native mock ee7b696a2e094798a91e4a940f9ed241 exposed the omitted cancellation event and failed closed; no mock motion. Revised cleanup version: full107passed22.17s; targeted9passed3.25s including retained-terminal failure. Real-model mock and deployment verification pending.
+- **Regression:** `tests/test_codex_broker.py::test_native_environment_handshake_and_result` covers interruption without command completion, explicit terminal cleanup, retained-terminal failure and stale command/turn events and correct review ordering for both supported model profiles.
+- **Related:** this replaces in-turn steering only for the initial pre-admission→leased observation transition. The runtime remains a model-driven observation/program/execution/revision loop; pinned upstream robot client is unchanged.
+- **Protocol source:** https://learn.chatgpt.com/docs/app-server (`turn/interrupt`, `turn/completed`, `turn/start`).
+- **Status:** DONE_WITH_CONCERNS — regression/fullsuite pass; do not claim physical or timing acceptance until actual native mock and deployed UI verification.
+
+Pinned Codex0.159.0 generated schemas confirm thread/backgroundTerminals/clean and /list. Official API documentation: https://learn.chatgpt.com/docs/app-server#clean-background-terminals . Separate setup-only attempts failed before inference due pinned Git ownership, readable cwd, missing semantic cache setting, and transient unit removal; these are not successful model evidence.
+
+Fresh verification: fullsuite108passed23.19s. Actual native model mock passed: 14a25bb2111049d69da1310db0729796, 43acb730c1ab4c4e8ca49c1be0461517; offline refinementaacf70105d6e4dcb8a08be55c5b7347c. Broker hash matches isolated candidate. Status: DONE for handoff repair; deployed physical timing/signoff remains separate.

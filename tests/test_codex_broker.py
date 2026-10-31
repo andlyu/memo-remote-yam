@@ -21,10 +21,10 @@ def test_broker_rejects_endpoint_and_cli_overrides():
 
 @pytest.mark.parametrize('prepared,handoff', [(False,False), (True,False), (True,True)])
 @pytest.mark.parametrize('model,effort',[('gpt-6-astra','low'),('gpt-6-luna','none')])
-def test_native_environment_handshake_and_result(tmp_path, prepared, handoff, model, effort):
+def test_native_environment_handshake_and_result(tmp_path, prepared, handoff, model, effort, retained=False):
     home=tmp_path/'home';(home/'workspace').mkdir(parents=True)
     binary=tmp_path/'codex-fixture'
-    binary.write_text('#!'+sys.executable+'\n'+f'EXPECTED_MODEL={model!r}\nEXPECTED_EFFORT={effort!r}\nHANDOFF={handoff!r}\n'+'''
+    binary.write_text('#!'+sys.executable+'\n'+f'EXPECTED_MODEL={model!r}\nEXPECTED_EFFORT={effort!r}\nHANDOFF={handoff!r}\nRETAINED={retained!r}\n'+'''
 import json,sys
 assert 'features.shell_tool=true' in sys.argv
 assert 'features.unified_exec=true' in sys.argv
@@ -50,24 +50,36 @@ for line in sys.stdin:
  if i==3:
   assert p['environments'][0]['cwd']=='/work' and p['ephemeral']
   assert p['model']==EXPECTED_MODEL
- emit(dict(id=i,result={'thread':{'id':'fixture'}} if i==3 else {'turn':{'id':'fixture-turn'}} if i==4 else {'turnId':'fixture-turn'} if i==6 else {}))
+ emit(dict(id=i,result={'thread':{'id':'fixture'}} if i==3 else {'turn':{'id':'fixture-turn'}} if i==4 else {'turn':{'id':'leased-turn'}} if i==7 else {'data':[{'processId':'retained'}] if RETAINED else [],'nextCursor':None} if i==9 else {}))
  if i==4:
   assert warming==2
   assert p['outputSchema']['properties']['status']['enum']==['continue','done','give_up']
   if HANDOFF:
-   emit(dict(method='item/started',params=dict(item=dict(type='commandExecution'))));continue
+   emit(dict(method='item/started',params=dict(turnId='fixture-turn',item=dict(id='prep-command',type='commandExecution'))));continue
  if i==6:
-  assert HANDOFF and p['expectedTurnId']=='fixture-turn' and p['threadId']=='fixture'
+  assert HANDOFF and v['method']=='turn/interrupt' and p['turnId']=='fixture-turn'
+  emit(dict(method='turn/completed',params=dict(turn=dict(id='fixture-turn',status='interrupted'))))
+  # Native interruption need not emit item/completed or stop unified exec.
+  continue
+ if i==8:
+  assert HANDOFF and v['method']=='thread/backgroundTerminals/clean' and p['threadId']=='fixture'
+ if i==9:
+  assert HANDOFF and v['method']=='thread/backgroundTerminals/list' and p['threadId']=='fixture'
+ if i==7:
+  assert HANDOFF and v['method']=='turn/start' and p['threadId']=='fixture'
   assert p['input'][0]['text'].startswith('[LEASED_OBSERVATION]')
   assert p['input'][1]['type']=='image'
-  emit(dict(method='item/completed',params=dict(item=dict(type='userMessage',content=p['input']))))
-  emit(dict(method='item/started',params=dict(item=dict(type='commandExecution'))))
- if i==4 or i==6:
+  emit(dict(method='item/completed',params=dict(turnId='leased-turn',item=dict(type='userMessage',content=p['input']))))
+  # A stale preparation command cannot satisfy review of the new turn's images.
+  emit(dict(method='item/started',params=dict(turnId='fixture-turn',item=dict(id='stale-command',type='commandExecution'))))
+  emit(dict(method='turn/completed',params=dict(turn=dict(id='fixture-turn',status='interrupted'))))
+  emit(dict(method='item/started',params=dict(turnId='leased-turn',item=dict(id='leased-command',type='commandExecution'))))
+ if i==4 or i==7:
   emit(dict(method='item/started',params=dict(item=dict(type='imageView',path='/work/frames/fresh.png',privateText='not forwarded'))))
   emit(dict(method='item/completed',params=dict(item=dict(type='imageView',path='/work/frames/fresh.png',privateText='not forwarded'))))
   result=dict(status='done',summary='Offline fixture complete',evidence=[])
-  emit(dict(method='item/completed',params=dict(item=dict(type='agentMessage',text=json.dumps(result)))))
-  emit(dict(method='turn/completed',params=dict(turn=dict(status='completed'))))
+  emit(dict(method='item/completed',params=dict(turnId='leased-turn' if i==7 else 'fixture-turn',item=dict(type='agentMessage',text=json.dumps(result)))))
+  emit(dict(method='turn/completed',params=dict(turn=dict(id='leased-turn' if i==7 else 'fixture-turn',status='completed'))))
 ''')
     binary.chmod(0o700)
     left,right=socket.socketpair();failures=[]
@@ -91,9 +103,18 @@ for line in sys.stdin:
             from agp_remote_yam.mock import preview
             send(right,dict(op='observation',prompt='[LEASED_OBSERVATION] fixture',
                             images=['data:image/jpeg;base64,'+base64.b64encode(preview()).decode()]))
+            if retained:
+                thread.join(5)
+                assert not thread.is_alive() and len(failures)==1
+                assert str(failures[0])=='Preparation terminals did not stop'
+                right.settimeout(.05)
+                with pytest.raises(TimeoutError):receive(right)
+                return
+            assert receive(right)['event']['stage']=='preparation_stopped'
             assert receive(right)['event']['stage']=='leased_images_accepted'
             assert receive(right)==dict(observation_accepted=True)
             assert receive(right)['event']['tool']=='userMessage'
+            assert receive(right)['event']['type']=='agp.tool.started'
             assert receive(right)['event']['type']=='agp.leased_images.reviewed'
             assert receive(right)['event']['tool']=='commandExecution'
             event=receive(right)
@@ -108,6 +129,10 @@ for line in sys.stdin:
         thread.join(5);assert not thread.is_alive() and not failures
         assert not list((home/'workspace').iterdir())
     finally:left.close();right.close()
+
+
+def test_broker_keeps_motion_closed_when_preparation_terminal_survives(tmp_path):
+    test_native_environment_handshake_and_result(tmp_path, True, True, 'gpt-6-luna', 'none', retained=True)
 
 
 def test_broker_images_cannot_reference_a_host_path_or_network_url():

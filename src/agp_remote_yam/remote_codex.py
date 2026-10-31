@@ -163,6 +163,8 @@ def main():
                     from .workspace import Workspace
                     update = json.loads(Workspace(workspace.parent).read(path.name, 5_000_000))
                     text = ('[LEASED_OBSERVATION] Fresh settled post-homing scene and measured state. '
+                            'The host ended the read-only preparation turn; cancellation of its blocked read is expected. '
+                            'No method motion was authorized in that turn. Saved scratch files remain available. '
                             'Inspect these supplied images now, then choose to execute or revise your candidate '
                             'program in a new coding tool call. Read fresh state inside the movement program. '
                             'Do not duplicate captures unless changed conditions require it.\n'
