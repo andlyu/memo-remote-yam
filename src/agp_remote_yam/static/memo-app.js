@@ -11,7 +11,7 @@ async function api(path, value) {
   return result;
 }
 function error(message) { $("error").textContent = message || ""; $("error").hidden = !message; }
-function displayStatus(run){return run.error?"Failed":terminal.has(run.status)&&!run.active&&run.outcome?.status==="done"?"Agent finished":run.status.replaceAll("_"," ");}
+function displayStatus(run){return run.error?"Failed":terminal.has(run.status)&&!run.active&&run.outcome?.status==="give_up"?"Could not complete":terminal.has(run.status)&&!run.active&&run.outcome?.status==="done"?"Agent finished":run.status.replaceAll("_"," ");}
 function timingLabel(run){
  if(run.mode==="offline_mock")return "Mock robot · no physical execution";
  const timing=run.timing||{};
@@ -153,6 +153,10 @@ function renderProgress(run){
  if(stopFailure&&activeRun){progress.textContent="Stop could not be confirmed · "+stopFailure+". Use Stop again; watch the live arms.";return;}
  if(terminal.has(run.status)&&run.active){progress.textContent="Session "+run.status.replaceAll("_"," ")+" · finishing cleanup before a new Run can start.";return;}
  if(!run.active&&terminal.has(run.status)){progress.textContent=run.error?"Run ended · "+run.error+". Review the error; start a new Run when ready. Movement will not be replayed.":run.outcome?.summary||"Run ended · review activity and retained evidence.";return;}
+ const lastCall=rows.filter(e=>e.kind==="tool_call").at(-1);
+ if(lastCall?.message==="frames"&&!rows.some(e=>e.id>lastCall.id&&e.kind==="tool_result"&&e.message==="frames")){
+  progress.textContent=lastCall.arguments?.depth?"Reading fresh overhead/wrist RGB-D · waiting for measured depth and camera calibration before choosing a target.":"Reading fresh camera views before the next decision.";return;
+ }
  const home=run.timing?.home_completed_at;
  const elapsed=home?Date.now()/1000-home:null;
  const admitted=rows.some(e=>e.kind==="lifecycle"&&e.message==="Robot session running");

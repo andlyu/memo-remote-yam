@@ -1,6 +1,6 @@
 {
   "harness_revision": "1619d7f25190ed00c37da6006b3f16c4580eb166",
-  "updated_at": "2026-10-31T06:59:28Z",
+  "updated_at": "2026-10-31T07:49:00Z",
   "requirements": [
     {
       "id": 1,
@@ -79,7 +79,7 @@
     }
   ],
   "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/COMPLETION-CHECKLIST.md",
-  "note": "13/15 verified. The apple task f93ef0712ffb4d9599f0ce53258270c5 failed before grasp due to a generated gripper endpoint below zero and missed startup timing. Endpoint generation repaired and offline verified; physical apple completion and final timing/signoff remain open. Earlier run evidence is preserved.",
+  "note": "13/15 verified. Gripper and observation-discovery fixes pass software/model checks. Later apple run gave up without requesting depth; overhead/wrist depth discovery is repaired. Physical apple completion and timing/final signoff remain open.",
   "scope": "Current integration; earlier bounded joint test retains its visual review. Later apple task failure reopens timing and final end-to-end signoff.",
   "physical_reviews": [
     {

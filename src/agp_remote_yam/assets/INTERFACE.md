@@ -16,9 +16,9 @@ contains no policy, motion target or task script. Keep your strategy in scratch/
 | Command | Arguments | Result |
 | --- | --- | --- |
 | status | {} | Selected robot, calibration, supported commands and cadence |
-| help | {} | Command list |
+| help | {} | Command list, depth capabilities, examples and actual calibration quality (`--help` is a read-only alias) |
 | state | {} | Six joints in radians, base-frame end-effector pose, measured gripper fraction, source timestamp |
-| frames | {"cams":["wrist","top"],"depth":true} | Local PNGs, numeric wrist depth .npy in metres, and capture calibration JSON |
+| frames | {"cams":["wrist","top"],"depth":true} | Local PNGs, numeric depth .npy in metres for each selected view, and capture calibration JSON |
 | move_ee | {"position":{"x":0.3,"y":0.0,"z":0.2},"rotation":{"w":1,"x":0,"y":0,"z":0},"mode":"linear"} | Achieved measured pose and target error, or failure |
 | move_joints | {"joints":[six radians]} | Achieved measured joints and pose |
 | gripper | {"action":"open"} or {"action":"close"} or {"action":0.5} | Achieved measured opening fraction |
@@ -40,7 +40,20 @@ The existing runner's YAM model, joint/contact checks, pacing, queue and lease
 validation remain active. The API accepts 10 Hz joint waypoints. Timed 50 Hz
 throwing programs are not supported by this adapter.
 
-`frames` saves files beneath frames/. Inspect the returned paths. Wrist depth is
+Initial image inputs are RGB previews. `depth_included:false` means numeric
+depth was not captured for those previews. Before giving up for missing object
+positions or contact heights, request fresh numeric data:
+`request('frames', {'cams':['top','wrist'], 'depth':True})`.
+Read `files.top_depth`, `files.wrist_depth` with NumPy and the returned calibration
+JSON. This is a read-only observation; it moves neither arm. Use actual depth,
+intrinsics/distortion and the selected arm's camera pose for geometric estimates;
+never reuse literal XYZ guesses. Check pixels/regions for valid samples and
+retain calibration uncertainty. A provisional quality flag is not a missing
+sensor, and numeric depth alone does not certify physical accuracy. Use bounded
+approaches and fresh views/state to validate estimates; give an evidence-grounded
+failure if uncertainty still prevents a valid action after obtaining observations.
+
+`frames` saves files beneath frames/. Inspect the returned paths. Depth is
 float32 optical Z in metres, 0 invalid. Intrinsics, distortion, camera-to-selected-
 base pose, calibration identity/quality, and timestamps are in the calibration
 file. Our images can be distorted and have different resolutions from the

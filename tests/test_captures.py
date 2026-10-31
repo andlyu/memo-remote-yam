@@ -30,7 +30,7 @@ def backend_for_capture(tmp_path, station, *, rgb_size=(64, 48)):
     bundle = io.BytesIO()
     np.savez(bundle, rgb=rgb, depth_m=depth, metadata=np.array('{}'))
     snapshot = DepthSnapshot(rgb, depth, dict(captured_at=time.time()), backend.report, bundle.getvalue())
-    backend.depth = {"left": SimpleNamespace(capture=lambda **_: snapshot)}
+    backend.depth = {role: SimpleNamespace(capture=lambda **_: snapshot) for role in ('left','right','top')}
     jpeg = io.BytesIO()
     Image.new("RGB", rgb_size).save(jpeg, "JPEG")
     backend.rgb = SimpleNamespace(fetch=lambda *_: SimpleNamespace(jpeg=jpeg.getvalue(), source_captured_at=None))
@@ -44,10 +44,13 @@ def test_numeric_depth_and_arm_base_calibration_are_saved(tmp_path, station):
     depth = np.load(root / result["files"]["wrist_depth"], allow_pickle=False)
     assert depth.dtype == np.float32 and np.allclose(depth, .25)
     assert (root / result["files"]["wrist_rgbd"]).is_file()
+    top_depth = np.load(root / result['files']['top_depth'], allow_pickle=False)
+    assert top_depth.dtype == np.float32 and np.allclose(top_depth, .25)
+    assert (root / result['files']['top_rgbd']).is_file()
     calibration = json.loads((root / result["files"]["calibration"]).read_text())
     assert calibration["wrist"]["image_size"] == [64, 48]
     assert calibration["wrist"]["synchronized_with_state"] is False
-    assert calibration["top"]["source_time_available"] is False
+    assert calibration["top"]["source_time_available"] is True
     assert calibration["_meta"]["calibration_quality"]["status"] == "experimental"
     expected = backend.geometry.state("left", observation)["position"]
     assert np.allclose(list(calibration["wrist"]["pose"]["position"].values()), list(expected.values()))
@@ -58,6 +61,22 @@ def test_stale_wrist_depth_does_not_return_a_capture(tmp_path, station):
     snapshot.metadata["captured_at"] = observation["observed_at"] - 1
     with pytest.raises(ValueError, match="precedes the settled"):
         backend.frames("left", {"cams": ["wrist"], "depth": True}, observation)
+
+
+def test_stale_overhead_depth_is_not_substituted_with_rgb(tmp_path, station):
+    backend, observation, _, snapshot = backend_for_capture(tmp_path, station)
+    snapshot.metadata['captured_at'] = observation['observed_at'] - 1
+    with pytest.raises(ValueError, match='precedes the settled'):
+        backend.frames('left', {'cams':['top'], 'depth':True}, observation)
+
+
+def test_help_discovers_depth_without_claiming_calibration_is_verified(tmp_path, station):
+    backend, _, _, _ = backend_for_capture(tmp_path, station)
+    help_result = backend.command('left', 'help', {})
+    assert help_result['examples']['frames']['depth'] is True
+    assert help_result['depth_cameras'] == ['top','wrist']
+    assert help_result['calibration_quality']['status'] == 'experimental'
+    assert backend.command('left', '--help', {}) == help_result
 
 
 def test_rgb_dimensions_must_match_calibration(tmp_path, station):

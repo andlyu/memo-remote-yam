@@ -67,6 +67,9 @@ class MockBackend(ApiBackend):
     def frames(self, arm, arguments, observation):
         self.capture_id += 1
         paths = {}
+        calibration_data = dict(mock=True, physical=False, observed_at=time.time(),
+            calibration_id='offline-mock-not-physical',
+            _meta=dict(calibration_quality=dict(status='mock_no_physical_validation')))
         for camera in arguments.get("cams", ["top", "wrist"]):
             if camera not in ("top", "wrist"):
                 raise ValueError("Unknown mock camera")
@@ -76,9 +79,20 @@ class MockBackend(ApiBackend):
             path = f"frames/{self.capture_id:04d}_{arm}_{camera}.png"
             self.workspace.write(path, out.getvalue())
             paths[camera] = path
+            calibration_data[camera] = dict(image_size=list(image.size),
+                intrinsics=[[500.,0.,480.],[0.,500.,270.],[0.,0.,1.]],
+                pose=self.geometry.state(arm,observation),captured_at=time.time(),mock=True)
+            if arguments.get('depth',True):
+                depth=np.full((image.height,image.width),.25,np.float32)
+                raw=io.BytesIO();np.save(raw,depth,allow_pickle=False)
+                depth_path=f'frames/{self.capture_id:04d}_{arm}_{camera}_depth.npy'
+                self.workspace.write(depth_path,raw.getvalue());paths[camera+'_depth']=depth_path
+                raw=io.BytesIO();np.savez(raw,rgb=np.asarray(image),depth_m=depth,
+                    metadata=np.array('{"mock":true,"physical":false}'))
+                bundle=f'frames/{self.capture_id:04d}_{arm}_{camera}_rgbd.npz'
+                self.workspace.write(bundle,raw.getvalue());paths[camera+'_rgbd']=bundle
         calibration = f"frames/{self.capture_id:04d}_{arm}_calib.json"
-        self.workspace.json(calibration, dict(mock=True, observed_at=time.time(),
-            calibration_id="offline-mock-not-physical"))
+        self.workspace.json(calibration, calibration_data)
         paths["calibration"] = calibration
         self.journal.add("capture", "Saved mock camera frames", files=paths)
         return dict(capture=self.capture_id, files=paths, physical=False)

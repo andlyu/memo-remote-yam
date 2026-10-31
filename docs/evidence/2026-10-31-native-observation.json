@@ -1,0 +1,118 @@
+{
+  "status": "passed",
+  "run_id": "3f325e425ad14cd98096b623ee84822a",
+  "physical": false,
+  "motion_commands": 0,
+  "model": "gpt-6-luna",
+  "elapsed_s": 31.51506148511544,
+  "depth_check": {
+    "top_shape": [
+      540,
+      960
+    ],
+    "wrist_shape": [
+      540,
+      960
+    ],
+    "top_min_m": 0.25,
+    "wrist_min_m": 0.25,
+    "calibration": {
+      "mock": true,
+      "physical": false,
+      "observed_at": 1793432806.1770968,
+      "calibration_id": "offline-mock-not-physical",
+      "_meta": {
+        "calibration_quality": {
+          "status": "mock_no_physical_validation"
+        }
+      },
+      "top": {
+        "image_size": [
+          960,
+          540
+        ],
+        "intrinsics": [
+          [
+            500.0,
+            0.0,
+            480.0
+          ],
+          [
+            0.0,
+            500.0,
+            270.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "pose": {
+          "position": {
+            "x": 0.31910666255065034,
+            "y": -0.03011831103560031,
+            "z": 0.21084998572947664
+          },
+          "rotation": {
+            "w": 0.5885880482436271,
+            "x": 0.05667522642765217,
+            "y": 0.8027312387049331,
+            "z": -0.07729544993966823
+          }
+        },
+        "captured_at": 1793432806.3131466,
+        "mock": true
+      },
+      "wrist": {
+        "image_size": [
+          960,
+          540
+        ],
+        "intrinsics": [
+          [
+            500.0,
+            0.0,
+            480.0
+          ],
+          [
+            0.0,
+            500.0,
+            270.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "pose": {
+          "position": {
+            "x": 0.31910666255065034,
+            "y": -0.03011831103560031,
+            "z": 0.21084998572947664
+          },
+          "rotation": {
+            "w": 0.5885880482436271,
+            "x": 0.05667522642765217,
+            "y": 0.8027312387049331,
+            "z": -0.07729544993966823
+          }
+        },
+        "captured_at": 1793432806.482819,
+        "mock": true
+      }
+    },
+    "state_observed_at": 1793432805.0739634
+  },
+  "outcome": {
+    "status": "done",
+    "summary": "Read-only depth preflight succeeded. Fresh numeric overhead and wrist depth arrays and calibration were obtained and inspected; no arm or gripper movement was issued. The fixture is explicitly mock-only and does not establish physical accuracy or apple placement.",
+    "evidence": [
+      "scratch/depth_check.json records top_shape and wrist_shape [540, 960], with top_min_m and wrist_min_m both 0.25.",
+      "Calibration at frames/0005_left_calib.json includes both camera intrinsics and poses, labeled mock=true, physical=false, calibration_id=offline-mock-not-physical, and quality=mock_no_physical_validation.",
+      "Arrays were loaded from frames/0005_left_top_depth.npy and frames/0005_left_wrist_depth.npy using NumPy; preflight script is scratch/depth_preflight.py."
+    ]
+  },
+  "scope": "Actual inference and numeric mock-depth inspection only; no physical task proof"
+}

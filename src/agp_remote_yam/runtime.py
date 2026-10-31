@@ -200,6 +200,10 @@ class AgentRuntime:
             Workspace(self.directory).json("initial-input.json", snapshot)
             prompt += ("\nFresh initial observations are supplied below and as ordered image inputs on the native remote worker. "
                        "Inspect these images now; request more views or numeric depth when the task requires them. "
+                       "depth_included=false means numeric depth has not been requested, not that depth is unavailable. "
+                       "For missing object positions or contact heights, call request('frames', {'cams':['top','wrist'], 'depth':True}) "
+                       "and inspect the returned numeric depth and calibration before concluding observations are unavailable. "
+                       "Do not guess XYZ from RGB. Preserve and assess calibration-quality warnings; acquiring depth does not certify extrinsics. "
                        "The full resolution images and calibration files are in the workspace. "
                        "These just-captured images and measured states already fulfill initial observation; "
                        "do not fetch the same views again unless missing detail or changed conditions require it. "

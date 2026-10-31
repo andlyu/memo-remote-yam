@@ -43,10 +43,17 @@ class ApiBackend:
                     health=deepcopy(observation.get("safety", {})), coordinate_frame=arm + "_base")
 
     def command(self, arm, command, arguments):
+        if command == '--help':
+            command = 'help'
         if command not in COMMANDS:
-            raise ValueError("Unsupported command; timed throwing programs are not available on the 10 Hz API")
+            raise ValueError("Unsupported command " + repr(command) + "; use request('help', {}) for commands and examples")
         if command == "help":
-            return dict(commands=list(COMMANDS), interface="README_interface.md")
+            return dict(commands=list(COMMANDS), interface="README_interface.md",
+                depth_cameras=['top','wrist'],
+                examples=dict(frames=dict(cams=['top','wrist'],depth=True)),
+                depth_files='Each requested view returns <view>_depth (.npy optical Z metres), <view>_rgbd and calibration.',
+                calibration_quality=deepcopy(self.report.get('quality', {})),
+                observation_note='Initial RGB previews omit numeric depth; request frames with depth=true before declaring depth unavailable. Calibration quality remains unverified where labelled.')
         if command == "status":
             return dict(robot_id=self.robot_id, frame=arm + "_base", cadence_hz=10,
                         commands=list(COMMANDS), synchronized_cameras=False, physical=True,
@@ -67,6 +74,11 @@ class ApiBackend:
                 raise ValueError("gripper action must be open, close, or a fraction")
             points = self.geometry.joints(arm, np.deg2rad(observation[arm + "_joints_deg"]).tolist(),
                 observation, observation["step_id"], {arm: float(fraction)})
+        # Reject malformed generated values while the bridge can return a local
+        # tool error, before the controller/execution worker owns the packet.
+        from remote_yam.session import _trajectory_waypoints
+        points = _trajectory_waypoints(points)
+        json.dumps(points, allow_nan=False)
         measured = self.policy.execute(points)
         result = self.state(arm, measured)
         if command == "move_ee":
@@ -103,25 +115,32 @@ class ApiBackend:
             measured_state=self.state(arm, observation), synchronized_with_images=False,
             calibration_quality=self.report.get("quality"))}
         paths = {}
-        roles = [arm if name == "wrist" else "top" for name in cameras if name != "wrist" or not depth]
+        roles = [] if depth else [arm if name == 'wrist' else 'top' for name in cameras]
         if roles and rgb_frames is None:
             rgb_frames = self.rgb_frames(roles)
+        snapshots = {}
+        if depth:
+            # Camera IO is independent. FK-derived camera transforms below stay
+            # serial because the canonical kinematics object is mutable.
+            with ThreadPoolExecutor(max_workers=len(cameras)) as pool:
+                pending = {name: pool.submit(self.depth[arm if name == 'wrist' else 'top'].capture,
+                    report=self.report, stopped=True, cancelled=self.policy.cancelled) for name in cameras}
+                snapshots = {name: future.result() for name, future in pending.items()}
         for name in cameras:
             role = arm if name == "wrist" else "top"
             camera = self.report["cameras"][role]
-            if name == "wrist" and depth:
-                snapshot = self.depth[role].capture(report=self.report, stopped=True,
-                    cancelled=self.policy.cancelled)
+            if depth:
+                snapshot = snapshots[name]
                 raw, captured = snapshot.image(), snapshot.metadata["captured_at"]
                 if captured <= observation.get("settled_after", observation["observed_at"]):
-                    raise ValueError("Wrist depth precedes the settled pose; request a fresh capture")
+                    raise ValueError(name + " depth precedes the settled pose; request a fresh capture")
                 out = io.BytesIO()
                 np.save(out, snapshot.depth.astype(np.float32), allow_pickle=False)
-                path = prefix + "_wrist_depth.npy"
+                path = prefix + '_' + name + '_depth.npy'
                 self.workspace.write(path, out.getvalue())
-                paths["wrist_depth"] = path
-                self.workspace.write(prefix + "_wrist_rgbd.npz", snapshot.recording_bundle())
-                paths["wrist_rgbd"] = prefix + "_wrist_rgbd.npz"
+                paths[name + '_depth'] = path
+                self.workspace.write(prefix + '_' + name + '_rgbd.npz', snapshot.recording_bundle())
+                paths[name + '_rgbd'] = prefix + '_' + name + '_rgbd.npz'
                 camera = snapshot.calibration["cameras"][role] if "cameras" in snapshot.calibration else camera
             else:
                 frame = rgb_frames[role]
@@ -146,7 +165,7 @@ class ApiBackend:
                 factory_intrinsics=camera.get("depth_intrinsics"),
                 source_time_available=captured is not None,
                 received_at=(getattr(rgb_frames[role], "received_at", None)
-                             if name != "wrist" or not depth else None),
+                             if not depth else None),
                 rectified=camera.get("rectified", False), synchronized_with_state=False)
         calibration_path = prefix + "_calib.json"
         self.workspace.json(calibration_path, calibration)
