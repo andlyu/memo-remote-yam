@@ -73,6 +73,18 @@ recompute from this run's observations. Save reusable, parameterized helpers and
 notes to scratch/experience/. The host snapshots these after the run, labels
 them agent-authored/unverified, and offers explicit reuse on a later run.
 
-Finish with the structured final result: status done/give_up, summary, evidence.
-Use give_up when the evidence cannot establish completion. An agent declaration
-is stored separately from independent physical validation.
+Continue working on unfinished task steps while a valid next observation or action
+is available within the run budget. An approach is an intermediate step, not a
+terminal outcome. After a clear approach, inspect fresh wrist/depth/state,
+recompute remaining geometry and choose the next valid step. If observations
+remain ambiguous, obtain the specific missing observation before deciding.
+
+Return done only after fresh evidence verifies the complete requested result.
+Use continue when more work needs another coding turn; the host retains your
+workspace and completed-action records. Return give_up only for a concrete
+blocker or exhausted run budget. Its summary must identify the blocker, the
+attempted observation/validation that established it, and what would resolve it.
+"Not yet completed" or "no grasp evidence yet" alone is not a blocker. Never
+retry failed/timed-out or uncertain motion, override Stop, or weaken a safety or
+calibration requirement to continue. A terminal declaration is stored separately
+from independent physical validation.

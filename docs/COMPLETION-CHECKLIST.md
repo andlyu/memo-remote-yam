@@ -170,6 +170,8 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
   panel for launches). Show the current stage, a plain-language reason and real
   stage completion, with honest failure/stall status and available recovery.
   Verify the detailed wait-stage behavior below.
+- [x] Every advertised control primitive passes the real parser/generator/serializer/canonical-validator command contract, including measured fractional starts, numeric endpoints, invalid input and zero-dispatch tests; required CI/release evidence retained.
+- [ ] Representative physical task matches advertised manipulation: approach/grasp/lift/place/release/withdrawal and fresh object-result evidence on the tested deployment; smoke motion alone is insufficient.
 - [ ] Before marking the integration complete or reporting it done, open the
   deployed website and perform a final end-to-end physical YAM run through its
   normal user interface. Verify every completion requirement against that
@@ -645,3 +647,31 @@ Repair: preserve the already-validated exact final gripper target rather than re
 Run c8b42ed779254dd0aa95db419749e030 completed Home then declared give_up without requesting frames/depth or method motion. The source c0d31e4 included the gripper fix; this was a separate observation-discovery problem. The agent's claim of unavailable depth was unsupported by a failed sensor request. Fresh calibration remains experimental_requires_fresh_validation, with held-out estimates but unverified physical depth/extrinsics accuracy; no quality warning is removed or relabelled.
 
 The adapter now exposes overhead and wrist numeric depth, retains fresh timestamps/calibration, provides actionable help examples and a read-only --help alias, and directs the model to obtain numeric observations before concluding geometry is unavailable. The real model loaded both mock arrays and preserved calibration caveats in run3f325e425ad14cd98096b623ee84822a,31.515s,0motion commands (docs/evidence/2026-10-31-native-observation.json). This is observation/inference proof, not physical placement proof. Complete packets are now locally validated and serialized before execution handoff; malformed packets return through the bridge without actuator submission. CI and release preflight run the command matrix and numeric/capture regressions. Current13/15 remains pending physical timing and task signoff.
+
+
+## Continued-task instruction repair and current requirements — October31,2026
+
+Current14/17 after adding the two shared control/task requirements from
+[shared control contract79c4e45](https://github.com/andlyu/blupe-remote-bots/blob/79c4e454aa829814152f8ff32a1979e68e93483d/codex-runner/integration-harness/CONTROL-CONTRACT.md).
+The retained15-item checklist and its authorization wording are preserved; the
+command-contract gate passes, representative physical manipulation remains open.
+Required CI [41182195201](https://github.com/andlyu/memo-remote-yam/actions/runs/41182195201)
+passed at76e7f04; release preflight36passed5.88s, fullsuite122passed22.78s.
+Pinned external validator remainsfb1aaa9a696ae4597d06aef41bf876bf2ec90e4d.
+
+Physical runa802bc53276a425b97359de2398a1489 obtained fresh numeric top/wrist depth
+and executed one clear approach; no gripper or grasp/lift/place followed. No
+controller/validation failure or timeout occurred. Request66.562s afterRun and
+54.433s afterHome already missed both timing targets; measured completion75.028/
+63.222s is not onset. First30s UI samples retained; exact later visual onset
+unverified. Replay100.125s played0→12.3004s/error=null. No motion was retried.
+
+Conflicting terminal instructions allowed give_up merely because the requested
+result was not yet proven. Instructions now distinguish unfinished work from an
+evidenced blocker, allow continue for another coding turn and require a concrete
+blocker/recovery description for give_up. Safety/Stop/uncertain-motion rules remain.
+Fullsuite122passed23.29s. Same actual model completed mock sequence60f219662f4b40a590cefe5e0df42ec6
+in29.034s: joint adjustment, gripper close, restored joints, gripper open; four
+commands, physical=false. This verifies sequencing only, not physical placement.
+A verifier working-directory PermissionError occurred before inference and was
+resolved by using its readable candidate directory; no physical command existed.

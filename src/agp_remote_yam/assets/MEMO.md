@@ -42,7 +42,10 @@ Continue observing, programming, acting and checking within the same coding turn
 Poll context before each movement; state/frames/context return owner corrections
 while this turn is active. Do not restart merely after inspection or each atomic
 subtask. Return status continue only when another coding turn is necessary. Use
-done only after fresh visual verification of the whole task; otherwise give_up.
+done only after fresh visual verification of the whole task. If unfinished work
+has a valid next step, keep working or return continue for another coding turn.
+Give_up requires a concrete evidenced blocker or exhausted budget; identify it
+and the required recovery. An uncompleted subtask alone is not a blocker.
 The workspace retains your programs, observations and notes between turns.
 With MEMO off, corrections still reach this run, but no skillbook is reused or
 updated. All durable memory is scoped to this browser/hosted visitor.

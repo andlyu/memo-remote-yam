@@ -1,6 +1,6 @@
 {
   "harness_revision": "1619d7f25190ed00c37da6006b3f16c4580eb166",
-  "updated_at": "2026-10-31T07:49:00Z",
+  "updated_at": "2026-10-31T08:06:00Z",
   "requirements": [
     {
       "id": 1,
@@ -76,10 +76,20 @@
       "id": 15,
       "passed": false,
       "requirement": "Before marking the integration complete or reporting it done, open the deployed website and perform a final end-to-end physical YAM run through its normal user interface. Verify every completion requirement against that deployment and record evidence; unmet or unverified requirements block completion."
+    },
+    {
+      "id": 16,
+      "passed": true,
+      "requirement": "Every advertised control primitive passes the actual parser/generator/serializer/canonical-validator gate, including fractional endpoints, invalid input and zero-dispatch failures; required CI/release evidence is retained."
+    },
+    {
+      "id": 17,
+      "passed": false,
+      "requirement": "Representative physical task verifies the advertised approach/grasp/lift/place/release/withdrawal and actual object result on the tested deployment. A joint smoke test or approach alone does not pass pick-and-place."
     }
   ],
   "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/COMPLETION-CHECKLIST.md",
-  "note": "13/15 verified. Gripper and observation-discovery fixes pass software/model checks. Later apple run gave up without requesting depth; overhead/wrist depth discovery is repaired. Physical apple completion and timing/final signoff remain open.",
+  "note": "14/17 verified after adding the two shared control-contract/task-acceptance requirements to the retained 15-item checklist. Control CI and release preflight pass. Latest physical test read top/wrist depth and completed an approach, then stopped before grasp/lift/place. Task acceptance, timing and final signoff remain open.",
   "scope": "Current integration; earlier bounded joint test retains its visual review. Later apple task failure reopens timing and final end-to-end signoff.",
   "physical_reviews": [
     {
@@ -94,5 +104,6 @@
       "home_to_visible_upper_s": 9.797123908996582,
       "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/evidence/2026-10-30-final-physical.json"
     }
-  ]
+  ],
+  "control_contract_revision": "79c4e454aa829814152f8ff32a1979e68e93483d"
 }
