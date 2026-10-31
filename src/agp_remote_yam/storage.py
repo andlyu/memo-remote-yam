@@ -28,7 +28,8 @@ class RunStore:
         workspace = directory / "workspace"
         for name in ("scratch", "frames", "bridge", "bridge_right", "knowledge", "goal"):
             (workspace / name).mkdir(parents=True, exist_ok=True)
-        for source, target in (("robot_client.py", "robot_client.py"), ("INTERFACE.md", "README_interface.md")):
+        for source, target in (("robot_client.py", "robot_client.py"), ("robot_api.py", "robot_api.py"),
+                               ("INTERFACE.md", "README_interface.md")):
             (workspace / target).write_bytes(files("agp_remote_yam").joinpath("assets", source).read_bytes())
         if with_memo:
             (workspace / "bridge_memo").mkdir()

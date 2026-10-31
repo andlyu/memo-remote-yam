@@ -8,7 +8,7 @@ import time
 from .dependency import runner_root
 from .storage import RunStore, Journal
 from .runtime import AgentRuntime
-from .identity import APPROACH, runner_identity, run_timing
+from .identity import APPROACH, runner_identity, run_timing, measured_timing
 from .recording import RunRecording, replay_info
 
 ROBOTS = {"yam-1": "YAM-1", "robot-ba8413962083809c": "RoboHouse YAM"}
@@ -158,9 +158,18 @@ class RunManager:
             controller.update_monitor_observation(monitor)
             controller.join_and_run(policy, task, run_duration_s=duration)
             if runtime.mode == "remote":
+                def prepare_backend():
+                    try:
+                        factory(policy)
+                    except Exception as exc:
+                        journal.add("worker", "Robot calibration preparation failed", error_type=type(exc).__name__)
+                threading.Thread(target=prepare_backend, name="agp-calibration", daemon=True).start()
                 def prime():
                     try:
-                        runtime.prime(factory(policy), monitor.get("observation", monitor.get("payload", monitor)))
+                        from .observation import ScenePreview
+                        preview = factory(policy) if self.settings.offline else ScenePreview(
+                            self.settings.origin, robot_id, directory / "workspace", policy, journal)
+                        runtime.prime(preview, monitor.get("observation", monitor.get("payload", monitor)))
                     except Exception as exc:
                         # Failed read-only priming is not replaced by stale or
                         # synthetic data. The leased startup can still report it.
@@ -205,12 +214,7 @@ class RunManager:
                 timing = metadata["timing"]
                 first = next((e for e in journal.after() if e["kind"] == "physical_motion_measured"), None)
                 if first:
-                    timing["first_measured_motion_at"] = first["time"]
-                    timing["server_receive_to_motion_s"] = first["time"] - timing["server_received_at"]
-                    if "run_clicked_at" in timing:
-                        timing["run_to_motion_s"] = first["time"] - timing["run_clicked_at"]
-                        timing["entry_to_motion_s"] = first["time"] - timing["page_entered_at"]
-                    timing["outcome"] = "measured_motion_visual_timing_unverified"
+                    timing = measured_timing(timing, first)
                 else:
                     timing["outcome"] = "not_physical" if self.settings.offline else "no_measured_motion"
                 self.store.update(directory, timing=timing, replay=replay_info(directory))
@@ -249,6 +253,9 @@ class RunManager:
             context = self.active.get(identity)
         if context:
             events = context["journal"].after(cursor)
+            first = next((e for e in context["journal"].after() if e["kind"] == "physical_motion_measured"), None)
+            if first:
+                value["timing"] = measured_timing(value["timing"], first)
         else:
             path = directory / "events.jsonl"
             rows = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
@@ -260,7 +267,7 @@ class RunManager:
             value["corrections"] = self.skillbook.corrections(owner, identity)
         value["files"] = sorted([str(path.relative_to(directory / "workspace"))
                           for path in (directory / "workspace").rglob("*")
-                          if path.is_file() and not path.is_symlink() and path.suffix in (".png", ".py", ".md", ".json", ".npy", ".npz")])
+                          if path.is_file() and not path.is_symlink() and path.suffix in (".jpg", ".png", ".py", ".md", ".json", ".npy", ".npz")])
         return value
 
     def close(self):

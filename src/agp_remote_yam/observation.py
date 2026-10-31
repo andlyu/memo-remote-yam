@@ -2,8 +2,45 @@
 import base64
 import io
 import json
+import math
 from PIL import Image
 from .workspace import Workspace
+
+
+class ScenePreview:
+    """Public RGB and raw telemetry only; never used as a robot command backend."""
+    def __init__(self, origin, robot_id, workspace, policy, journal):
+        from remote_yam.cameras import CameraFrameSource
+        self.origin, self.robot_id = origin.rstrip('/'), robot_id
+        self.workspace, self.policy, self.journal = Workspace(workspace), policy, journal
+        self.rgb = CameraFrameSource(self.origin, camera_names=('top', 'left', 'right'))
+
+    def state(self, arm, observation):
+        return dict(joints=[math.radians(v) for v in observation[arm+'_joints_deg']],
+                    gripper_fraction=observation[arm+'_gripper'], observed_at=observation['observed_at'],
+                    health=observation.get('safety', {}), ee_pose=None, calibration_id=None,
+                    note='Pre-admission telemetry; fresh leased state and calibration are required for motion.')
+
+    def initial_frames(self, observation):
+        from .backend import ApiBackend
+        frames = ApiBackend.rgb_frames(self, ('top', 'left', 'right'))
+        captures = {}
+        for arm in ('left', 'right'):
+            paths, metadata = {}, dict(phase='monitor_before_admission', physical=True,
+                                      camera_poses_valid_for_motion=False, synchronized=False,
+                                      note='Unbound preparation views; obtain leased calibration before geometric use.')
+            for name in (('top', 'wrist') if arm == 'left' else ('wrist',)):
+                role = arm if name == 'wrist' else 'top'
+                frame = frames[role]
+                path = 'frames/initial_' + role + '.jpg'
+                self.workspace.write(path, frame.jpeg)
+                paths[name] = path
+                metadata[name] = dict(received_at=frame.received_at, source_captured_at=frame.source_captured_at)
+            paths['calibration'] = 'frames/initial_'+arm+'_metadata.json'
+            self.workspace.json(paths['calibration'], metadata)
+            captures[arm] = dict(files=paths)
+        self.journal.add('capture', 'Saved public read-only preparation views; no pose calibration assumed')
+        return captures
 
 
 def initial_input(backend, observation=None):

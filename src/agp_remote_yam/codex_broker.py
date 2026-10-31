@@ -25,6 +25,22 @@ MAX_FRAME = 8_000_000
 RESULT_SCHEMA = dict(type='object', additionalProperties=False, properties=dict(
     status=dict(type='string', enum=['continue', 'done', 'give_up']), summary=dict(type='string'),
     evidence=dict(type='array', items=dict(type='string'))), required=['status', 'summary', 'evidence'])
+POLICY_INSTRUCTIONS = """You are the runtime coding agent in Agent as Policy.
+Observe the supplied images and telemetry, write and execute Python programs,
+choose robot actions, then reobserve and revise from measured outcomes. Use the
+authoritative robot interface for every robot interaction. Programs and their
+results belong in scratch/. Use concise programs and the provided CLI wrapper
+instead of rebuilding transport boilerplate. Keep all tools in the selected
+isolated /work environment. Do not alter the supplied clients or interfaces.
+Pre-admission images are read-only scene context: the arms may home before the
+lease. Read fresh leased state before choosing targets, and get fresh images or
+depth whenever changed conditions or uncertainty require them. Never invent
+calibration, motion evidence or task success. A failed or timed-out movement
+must never be retried automatically. Respect Stop. Use coding and image tools
+directly without an introductory status announcement. Continue the observation,
+programming, action and verification loop in this turn until done or give_up.
+Return the required structured result with evidence or an honest failure reason.
+"""
 
 
 def send(sock, value):
@@ -119,7 +135,7 @@ def execute(sock, value, *, binary, home, timeout=610):
             started = time.monotonic()
             def profile(stage, **details):
                 send(sock, dict(event=dict(type='agp.profile', stage=stage,
-                    elapsed_s=round(time.monotonic()-started, 3), **details)))
+                    at=time.time(), elapsed_s=round(time.monotonic()-started, 3), **details)))
             def request(identity, method, params):
                 process.stdin.write((json.dumps(dict(id=identity, method=method, params=params))+'\n').encode())
                 process.stdin.flush()
@@ -175,6 +191,7 @@ def execute(sock, value, *, binary, home, timeout=610):
                                     profile('environment_ready')
                                     request(3, 'thread/start', dict(model='gpt-6-astra', approvalPolicy='never',
                                         sandbox='danger-full-access', ephemeral=True,
+                                        baseInstructions=POLICY_INSTRUCTIONS,
                                         environments=[dict(environmentId=environment, cwd='/work')],
                                         developerInstructions='All coding tools execute in the selected isolated /work environment. Read and write the task workspace there. No physical success is established by the harness.'))
                                 elif identity == 3:

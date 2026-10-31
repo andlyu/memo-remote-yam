@@ -40,7 +40,7 @@ def wait_run(app, identity, cookie):
     while time.monotonic() < deadline:
         status, _, run = request(app, "/api/runs/" + identity, cookie=cookie)
         assert status == 200
-        if run["status"] in ("failed", "stopped", "timed_out", "disconnected") and identity not in app.manager.active:
+        if run["status"] in ("failed", "stopped", "timed_out", "disconnected") and not run["active"]:
             return run
         time.sleep(.03)
     raise AssertionError(run)

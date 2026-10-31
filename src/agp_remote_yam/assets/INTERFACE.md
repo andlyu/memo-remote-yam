@@ -6,6 +6,13 @@ Each call blocks until a matching measured completion or an error. Commands are
 sequential. Never automatically retry a timed-out motion. A timeout can mean
 that physical execution occurred. Inspect fresh state and report the failure.
 
+For concise generated Python, run `PYTHONPATH=. python3 scratch/program.py` and
+`from robot_api import request, once`. `request(command, arguments, arm="left")`
+calls the unchanged CLI and raises on failure. `once(unique_name, command,
+arguments, arm="left")` additionally records an exclusive attempt marker before
+calling it; repeating that name fails without another command. The helper
+contains no policy, motion target or task script. Keep your strategy in scratch/.
+
 | Command | Arguments | Result |
 | --- | --- | --- |
 | status | {} | Selected robot, calibration, supported commands and cadence |

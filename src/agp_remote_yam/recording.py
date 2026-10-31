@@ -37,11 +37,12 @@ class RunRecording:
             self.log = (self.root / "ffmpeg.log").open("wb")
             self.process = subprocess.Popen([binary, "-hide_banner", "-loglevel", "warning", "-y",
                 "-rw_timeout", "15000000", "-headers", "Origin: " + PUBLIC_VIEWER + "\r\n",
-                "-i", source, "-t", "630", "-map", "0:v:0", "-an", "-vf", "fps=10,scale=1280:-2",
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-movflags", "+faststart",
+                "-i", source, "-t", "630", "-map", "0:v:0", "-an",
+                "-c:v", "copy", "-movflags", "+faststart",
                 str(self.root / "physical.mp4")], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=self.log)
             self.manifest.update(status="recording", recording_started_at=time.time(), source=source,
-                                 camera_roles=stream["cameras"], note="Actual physical camera atlas; independent camera timing and public stream buffering apply.")
+                                 camera_roles=stream["cameras"], encoding="source_video_copy",
+                                 note="Actual physical camera atlas; independent camera timing and public stream buffering apply.")
         except Exception as exc:
             self.manifest.update(status="unavailable", note=str(exc))
         self.save()

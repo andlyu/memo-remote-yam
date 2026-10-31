@@ -113,3 +113,16 @@ def test_pre_admission_motion_is_rejected_but_pending_state_is_fresh(tmp_path):
         assert json.loads(response.read_text())==dict(ok=True,fresh=True)
         assert calls==['state']
     finally:stopped.set();bridge.thread.join(2)
+
+
+def test_python_helper_uses_original_client_and_never_replays_an_attempt(tmp_path):
+    _,directory=RunStore(tmp_path).create('convenience wrapper')
+    root=directory/'workspace';calls=[];stopped=threading.Event()
+    bridge=FileBridge(root,SimpleNamespace(command=lambda arm,cmd,args:(calls.append((arm,cmd,args)) or dict(joints=[0]*6))),Journal(directory),stopped)
+    bridge.start()
+    try:
+        code="from robot_api import request,once;assert request('state',arm='right')['ok'];once('one','move_joints',{'joints':[0]*6});once('one','move_joints',{'joints':[0]*6})"
+        run=subprocess.run([sys.executable,'-c',code],cwd=root,capture_output=True,text=True,timeout=5)
+        assert run.returncode!=0 and 'FileExistsError' in run.stderr
+        assert calls==[('right','state',{}),('left','move_joints',{'joints':[0]*6})]
+    finally:stopped.set();bridge.thread.join(2)

@@ -74,7 +74,7 @@ The agent must compute motion targets from that fresh state, and request new
 images/depth whenever the changed pose or uncertainty requires them. No task
 script or startup movement is supplied by the host.
 
-Initial RGB views are fetched in parallel, with original images/calibration
+Initial RGB views are fetched in parallel, independently of robot geometry preparation, with original images/metadata
 retained and bounded JPEG previews supplied directly to the model. The host's
 initial input manifest is outside the generated-code mount. Source timestamps
 preceding settlement are rejected on leased captures. Numeric depth remains
@@ -84,7 +84,7 @@ The delayed-lease actual-model mock `32e2b9f89a1e4fdaaccaf6bc70f43f98`
 completed its first generated command at11.240 seconds, including a deliberate
 ten-second simulated queue wait. It made one state-relative move after
 admission and verified it. This is mock evidence, not a physical timing pass.
-The adapter suite passed83 tests in14.39 seconds. Review the
+A harder mock with a changed admission pose completed first movement in14.887 seconds with Astra; a controlled Sol comparison took19.340 seconds, so Astra is retained. The adapter suite passed85 tests in15.88 seconds. Review the
 [shared completion harness](COMPLETION-CHECKLIST.md) before any completion claim.
 
 ### AgP-only deployment repair
@@ -107,3 +107,13 @@ After confirming no active AgP run, stop the web unit, install the verified whee
 switch the release link, restart `agp-codex-broker.service`, then start
 `agp-web.service`. Roll back both units with the previous wheel if startup fails.
 Authentication files and other services remain independent.
+
+Physical video is remuxed with `-c:v copy` to preserve the original encoded feed
+and avoid competing with worker startup for video-encoding CPU. The live source
+was verified as H.264,2560×1080,8 fps; a five-second copy produced a valid MP4.
+The native thread uses concise robot-policy instructions and a host-supplied
+`robot_api.py` wrapper around the unchanged authors' CLI. That wrapper contains
+no policy or motion targets; generated programs remain the runtime agent's work.
+Uncalibrated preparation views explicitly expose no end-effector pose or camera
+pose binding. Fresh geometry is prepared separately and remains mandatory for
+leased commands.

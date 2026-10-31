@@ -101,3 +101,21 @@ def test_initial_input_has_both_measured_arms_and_three_labelled_images(tmp_path
     Workspace(directory).json('initial-input.json',snapshot)
     assert load_initial_input(directory/'workspace')==snapshot
     assert not (directory/'workspace/initial-input.json').exists()
+
+
+def test_readonly_preview_does_not_construct_geometry_or_claim_pose_calibration(tmp_path,station,monkeypatch):
+    from agp_remote_yam.observation import ScenePreview,initial_input
+    from agp_remote_yam.mock import preview
+    from remote_yam.cameras import CameraFrameSource
+    from agp_remote_yam.geometry import YamGeometry
+    _,directory=RunStore(tmp_path).create('read-only scene')
+    monkeypatch.setattr(YamGeometry,'__init__',lambda *_:pytest.fail('Scene preview constructed robot geometry'))
+    monkeypatch.setattr(CameraFrameSource,'fetch',lambda _,name,url:SimpleNamespace(
+        jpeg=preview(name),received_at=time.time(),source_captured_at=None))
+    policy=SimpleNamespace(physical=True)
+    scene=ScenePreview('https://example.test','yam-1',directory/'workspace',policy,Journal(directory))
+    result=initial_input(scene,station.get_robot_observation('yam-1'))
+    assert result['context']['phase']=='monitor_before_admission'
+    assert result['context']['camera_poses_valid_for_motion'] is False
+    assert result['context']['states']['left']['ee_pose'] is None
+    assert len(result['images'])==3

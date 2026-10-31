@@ -228,6 +228,8 @@ class AgentRuntime:
                 if self.stopped.is_set():
                     return None
                 prompt = self._initial_prompt(prompt)
+                if self.stopped.is_set():
+                    return None
                 self.state = "running"
             self.journal.add("agent", "Agent as Policy is observing and programming", model=self.model)
             process.stdin.write(prompt)

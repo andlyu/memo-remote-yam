@@ -146,7 +146,7 @@ MEMO remains a separate explicit application; legacy data is preserved.
   email. Automated tests use `Automated`, `email:null`, no invented human identity.
 - Isolation: default runtime creates no skillbook, memory channel, MEMO protocol,
   client or bridge. API rejects MEMO. Separate `--memo-site` retains that project.
-- Offline tests: initial 69 passed in 13.48 s; station-selection regression pending.
+- Offline tests: initial69 passed in13.48 s; current candidate85 passed in15.88 s, including station, isolation, pre-admission rejection and Stop regressions.
 - Actual model/mock station: `e1d01c1cf91344d98ad9fe9134434baa`, Codex 0.159.0,
   Astra medium, actual generated `scratch/transport_test.py`, exactly one +0.01
   rad relative joint change verified by fresh measured state and images.
@@ -156,7 +156,7 @@ MEMO remains a separate explicit application; legacy data is preserved.
 - Replay implementation: actual public camera atlas captured with ffmpeg;
   owner-scoped MP4 replay with byte-range support, associated with the run.
   Missing/invalid footage is explicitly unavailable, never synthesized.
-  Physical capture and normal UI replay acceptance remain pending.
+  Physical capture and normal UI replay are verified in attempts2 and3 below.
 - Readiness at 23:02 UTC: YAM-1 public station disconnected, direct SSH timed out
   (5.014 s), existing operator tunnel status timed out (20.029 s), camera stream
   returned404 using the correct Origin header. RoboHouse station connected;
@@ -167,16 +167,18 @@ MEMO remains a separate explicit application; legacy data is preserved.
 
 ### Per-run physical acceptance
 
-No physical run has been submitted during this repair yet. A real model with a
-mock station does not satisfy motion, live execution or replay requirements.
+The original pre-acceptance checkpoint had no physical run. That checkpoint is
+superseded by the dated attempts below. A real model with a mock station does
+not satisfy motion, live execution or replay requirements.
 Browser click/server timing is recorded per run; a matched physical feedback
 change is retained separately, without treating an ACK or queue state as motion.
 Timed visual evidence remains necessary to check either15-second criterion.
 
 ### Final deployed review
 
-Pending corrected release and browser verification. Unverified requirements
-remain unchecked; do not call this integration complete.
+Physical execution and replay are verified below. Both timing targets remain
+missed on0616bcf; final all-gates verification of the next candidate is pending.
+Unverified requirements remain unchecked; do not call this integration complete.
 
 ### Live acceptance attempt 1
 
@@ -277,3 +279,32 @@ physical AgP integration and passing software tests do not erase those misses.
 - Legacy method isolation: old MEMO/unknown-method records are rejected by AgP detail, file/replay and experience-seeding ownership checks, while preserved on disk for their separate application. This prevents direct legacy links from mislabelling a MEMO run as AgP.
 
 - Final full adapter suite:77 passed in14.24 s, including strict legacy-method isolation, identity, Stop ownership, real-client protocol, calibrated geometry and replay access/ranges.
+
+### Latency acceptance attempt 3 — execution verified, target missed
+
+- Source0616bcf986150ab00f134ea3ce07d15681657b89, normal deployed UI,
+  RoboHouse, Automated/no email, genuine Astra low/Fast coding agent.
+  Run `e41fab37c2074200b01f604523cf8827`.
+- Browser entry00:49:37.3591 UTC October31 (October30 PDT), click00:49:37.843.
+  Host screen recording marks differ by≤31 ms from page event timestamps and
+  retain actual frame-capture bounds. Entry-to-click0.484 s.
+- First generated trajectory requested25.398 s after server creation; matched
+  physical completion27.303 s after click,27.787 s after entry. Both15-second
+  targets are missed; Home/queue activity is not counted as AgP movement.
+- The agent observed the pre-admission images, read fresh leased state and
+  requested fresh views when homing changed the pose. Its generated
+  `scratch/execute_step.py` made one +0.04 rad left-joint-0 request, never retried.
+  Fresh measured delta+0.038148 rad; other left drift≤0.000382 rad, right
+  drift≤0.000763 rad. Targets and grippers were preserved, with measured right
+  gripper variation−0.000716. Fresh post-motion RGB was inspected.
+- Timing stages: initial observations6.591 s; native thread ready9.421 s;
+  robot running10.362 s; fresh views16.944 s; new generated move25.398 s.
+  This remains a missed target, not a research exception.
+- Actual replay37.0 s/1173669 bytes; normal UI playback verified visibly
+  advancing at0:12/0:37. New run is selectable in history. Evidence:
+  physical-1-receipt.json, physical-1-entry-and-run.mp4 and timestamp sidecar,
+  physical-1-robot-replay.mp4, physical-1-replay-playing.png in this chat's bundle.
+- Subsequent candidate work removes recorder re-encoding (source H.264 copy
+  validated at2560×1080/8 fps), decouples uncalibrated read-only scene previews
+  from fresh robot geometry preparation, and supplies a concise Python wrapper
+  around the unchanged authors' CLI. A new physical acceptance is still needed.

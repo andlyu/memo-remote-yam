@@ -38,3 +38,14 @@ def run_timing(value):
             raise ValueError("Run click precedes page entry")
     result["clock_basis"] = "Browser timestamps and server arrival; verify against retained visual evidence"
     return result
+
+
+def measured_timing(timing, first):
+    result = dict(timing)
+    result.update(first_measured_motion_at=first["time"],
+                  server_receive_to_motion_s=first["time"]-result["server_received_at"],
+                  outcome="measured_motion_visual_timing_unverified")
+    if "run_clicked_at" in result:
+        result.update(run_to_motion_s=first["time"]-result["run_clicked_at"],
+                      entry_to_motion_s=first["time"]-result["page_entered_at"])
+    return result
