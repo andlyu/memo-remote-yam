@@ -8,14 +8,19 @@ with a runtime coding policy controlling the public BluPe Remote YAM API.
 - Acceptance evidence: [shared completion harness](docs/COMPLETION-CHECKLIST.md)
 - Agent workflow: [repo-local harness contract](docs/BLUPE-HARNESS-CONTRACT.md)
 
+Physical learning, later-run retrieval, live arms, immediate/history replay and
+hosted offline refinement were verified on October30,2026. Acceptance remains
+incomplete: measured movement completed27.0s,19.9s and29.7s after Run in the
+three trials, missing the15s target. See the [sanitized receipt](docs/evidence/2026-10-30-physical.json).
+
 The coding agent observes the real scene, writes and executes Python, checks
 measured results, and revises its program. Your corrections become generalized
 guidance; verified subtask programs can become parameterized skill templates.
 Later runs retrieve relevant lessons from the browser-owned skillbook.
 Skills are agent-authored and remain unverified until independently reviewed.
 
-The page includes editable name/email confirmation, explicit Automated test
-identity, live cameras, corrections, retained physical replay, prior-run history,
+The page includes editable name/email confirmation, confirmed human identity
+with a separate automated verification mode, live cameras, corrections, retained physical replay, prior-run history,
 generated source and measured timing. **Refine skillbook** consolidates related
 lessons offline while preserving original source IDs and constraints. It creates
 no robot session and rejects every robot command. Stop always targets the

@@ -106,26 +106,26 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
   public-visibility exception for either is recorded below.
 - [x] The website clearly names the actual approach/method being run. Use the
   executed method's name; Spotter is an example, not a shared hardcoded label.
-- [ ] When a human joins, collect or confirm their name and email. Prefill known
+- [x] When a human joins, collect or confirm their name and email. Prefill known
   identity/default values where available and let the runner edit both fields
   before joining.
-- [ ] Run context includes the actual approach and confirmed runner identity;
+- [x] Run context includes the actual approach and confirmed runner identity;
   the website makes clear which method is running and whose run it is.
-- [ ] Policy/model tests initiated by a person retain that actual user's
+- [x] Policy/model tests initiated by a person retain that actual user's
   confirmed name as runner. Use available identity and editable name/email
   defaults; require the real name to be provided/confirmed if missing before
   testing or running. Do not substitute `Anonymous`, `Autonomous` or `Automated`
   for that person. Record execution mode (such as `automated test`) and actual
   approach separately from human identity. Genuinely unattended/system activity
   has an explicit system identity; never fabricate a person's name or email.
-- [ ] A person can use the website to run the integrated paper's method on
+- [x] A person can use the website to run the integrated paper's method on
   physical YAM robots/arms. Record a verified physical execution of that method.
-- [ ] The actual physical arms are visible live on the website while the method
+- [x] The actual physical arms are visible live on the website while the method
   runs, so a visitor can see that it is executing on real hardware.
-- [ ] Immediately after a run finishes, the person can replay that just-completed
+- [x] Immediately after a run finishes, the person can replay that just-completed
   physical YAM execution through the website, with retained footage showing the
   actual arms executing the integrated method.
-- [ ] The person can browse/select previous runs on the website and replay their
+- [x] The person can browse/select previous runs on the website and replay their
   retained physical arm footage, associated with the executed method and run.
   Mock animations do not satisfy either replay requirement.
 - [x] If the integrated method executes anything in simulation, those executions
@@ -198,7 +198,9 @@ itself a paper/research-grounded exemption.
 
 | Run reference | Run click (`t_run`) | First observed method-driven arm motion (`t_motion`) / visual evidence | Elapsed seconds | Outcome |
 | --- | --- | --- | --- | --- |
-| | | | | |
+| `86f7556492d143cb9c7d8bd2d563318b` (fbd1e86) | 1793421393.293 | Request at1793421418.526; measured completion1793421420.285; visual onset unverified | Request25.233; completion26.992 | Missed target; no exception |
+| `74d4fcd586b649c9a7c3eaf3a063b7e6` (ae8661b) | 1793422280.483 | Request1793422299.105; measured completion1793422300.339; visual onset unverified | Request18.622; completion19.856 | Missed target; no exception |
+| `01fc10c00cbe44308247e7b5849b1e4b` (0fa07ea) | 1793422981.128 | Request1793423009.270; measured completion1793423010.794; visual onset unverified | Request28.142; completion29.666 | Missed target; no exception |
 
 - Exception record (repeat for each affected run):
 - Exception category (GPU launch or paper/research-grounded):
@@ -354,3 +356,115 @@ progress; final normal-UI physical run. No timing exception is claimed. There
 are no physical Run-click rows because the requested test was blocked before
 submission. Acknowledgement, mock motion and other integrations' movement are
 not counted as MEMO physical evidence.
+
+
+## Resumed deployed physical review — October30,2026 (04:59 UTC October31)
+
+The user adopted the harness routing instructions and said “please proceed.”
+The scoped normal-UI test then passed automatic review and ran. The earlier
+approval refusal above is historical; it did not trigger an alternate route.
+Invocation and concrete scope were surfaced before each subsequent UI test.
+Confirmed Andrew name/email were submitted only to the MEMO origin and existing
+BluPe backend stated above; private email is excluded from public evidence.
+Human runner attribution is separate from automated_test execution mode.
+
+Physical run86f7556492d143cb9c7d8bd2d563318b: one generated +.04rad relative
+left joint0 target, fresh leased state/images and a new post-image coding step.
+Measured delta+.0370031rad; all other targets retained. The model reported the
+shortfall honestly, received two corrections, and saved one generalized guidance
+and one parameterized Python template (skillbook v2). Normal parking/release;
+no command retry. Actual camera atlas replay was immediately ready,55.125s,
+4555648bytes. The same run was selected from Your runs after reload; the native
+player reached55.125s without error. Its owned replay route is
+/api/runs/86f7556492d143cb9c7d8bd2d563318b/replay.mp4 .
+
+Physical run74d4fcd586b649c9a7c3eaf3a063b7e6: ae8661b startup-overlap fix; one
+new -.015rad left joint0 target computed from fresh leased state, measured
+delta-.0148775rad. Normal parking, no retry. Replay immediately ready37.125s,
+3069601bytes at its matching /api/runs/<id>/replay.mp4 route. Actual model
+queried GENERAL and retrieved no memories despite action-specific lessons;
+this run establishes physical execution, not successful memory reuse.
+
+Both physical timing targets were missed. Entry-to-measured-completion was
+110.521s on the first run (page left open for setup) and21.960s on the second
+(returning browser, saved editable identity, fresh navigation and task entry).
+Second run has83 timed UI PNG captures across45.677s; the narrow default viewport
+clips some camera views during scrolling. These are not an exact visual-onset
+measurement. No GPU was launched and no research exception is claimed.
+
+The first trace proved serial read-only telemetry preparation delayed admission.
+The overlap regression failed before the fix and all101 tests passed afterwards
+(22.72s). Native model mock verification also passed learning/reuse/refinement
+with confirmed Andrew attribution. The physical recheck improved measured
+completion from26.992s to19.856s, still above target. The controller record
+shows9.28s between joined and first homed observation, followed by reconciled
+safety feedback, fresh camera handoff and a new model decision. Read-only camera
+profiling:2.587s total including backend construction,1.870s initial input,
+1.261s RGB fetch. No safety gate or pinned controller was changed.
+
+The empty GENERAL retrieval exposed a separate missing-discovery defect.
+0fa07ea adds an owner/version-scoped available_actions catalog and instructs
+the coding agent to choose a relevant action label. Regression red0.17s;
+102 tests passed21.61s. Actual native model mock check passed action-specific
+learning and retrieval of all three saved entries, then offline refinement
+with source provenance. Mock runs9fcad42057914b2ea6c4d6e20088cf84 and
+d28449262fc046aaa7cfe30725e37412; refinement99e2700dfb0f4498b7dc54507dbf5089.
+These mock checks do not satisfy physical reuse or timing acceptance.
+
+Reviewed every checkbox again: public separate website/source/method, actual
+human attribution, physical method execution, live arm visibility, immediate
+and historical replay have direct deployed evidence. Simulation remains N/A
+(no physics simulation in the deployed method). Both15s criteria remain open.
+Inline progress persists below Run and shows actual completed queue/scene/motion
+stages; terminal outcome and timing appear there. Final current-revision physical
+verification and failure/stall/recovery review remain open pending final check.
+No completion claim is made.
+
+
+## Final current-code review — October30,2026 (05:10 UTC October31)
+
+Deployed source0fa07ea23c82fb4839092473853061a86c8b41d6, same public MEMO
+origin and separate repository; public GitHub metadata confirms private=false.
+All102 tests passed21.61s. No AgP/Playground changes or robot-client edits.
+Source-linked sanitized results: [acceptance receipt](evidence/2026-10-30-physical.json).
+
+Normal-UI physical run01fc10c00cbe44308247e7b5849b1e4b used confirmed Andrew,
+human runner with separate automated_test mode; editable name/email defaults
+were confirmed before queue entry.60s limit, RoboHouse, one freshly generated
++.02rad left joint0 target. Retrieved prior guidance/template IDs2/1, reviewed
+fresh leased images before a new coding tool call, generated scratch/draft.py,
+and executed once. Measured delta+.01831rad; remaining joint targets, other arm
+and gripper targets retained. Correction delivered and generalized guidanceID3
+saved. This bounded joint-adjustment smoke test is not a general manipulation
+benchmark or a reproduction of the paper's simulated evaluations.
+
+Actual arms were visible in all four live views. Continuous post-Run UI samples
+were retained (84frames/45.447s main batch); native scrolling restored the camera
+view after correction entry. A pre-Run keyboard-scroll automation failure
+made the full entry path93.602s to measured completion. Run-to-measured-completion
+was29.666s, with motion request already later than15s. Both targets missed;
+exact visual onset remains unverified and no exception is claimed.
+
+Immediately available physical replay48.125s/4006296bytes at
+/api/runs/01fc10c00cbe44308247e7b5849b1e4b/replay.mp4 played0.0767→2.8906s
+with paused=false/error=null. On this current deployment, selecting the first
+physical run from Your runs and playing its55.125s clip advanced0.085→2.3522s,
+error=null and matching source URL. The final view selected the newest run.
+
+Refine skillbook was then run through the deployed UI, with persistent offline
+status and Cancel refinement available. Job e600f299f4ca4ce7bb0476f090e3a8da
+completed in27.926s in offline_memory mode, without a robot controller/session.
+New guidanceID4 preserves parents[1,3]; rewritten parameterized templateID5
+preserves parent[2]. Old versions and raw corrections remain. The site shows
+skillbook v5/two current entries; the physical run still pins v2. Rewritten
+templates remain agent-authored/unverified, not new physical validation.
+
+Every requirement was reviewed:11 checked,4 unchecked. Open requirements are
+entry-to-observed-motion≤15s, every Run-to-observed-motion≤15s, comprehensive
+deployed failure/stall/recovery verification, and overall final acceptance
+because those requirements remain unmet. Inline submitting/queue/scene/motion
+and offline-refinement progress, elapsed waits, terminal outcomes and Stop/Cancel
+availability were verified; a deployed failed/stalled worker was not deliberately
+created or claimed as tested. Simulation: no simulated task rollout; predictive
+MuJoCo kinematics/contact validation is retained, not presented as a simulated
+execution. No active physical run remains. No overall completion claim.

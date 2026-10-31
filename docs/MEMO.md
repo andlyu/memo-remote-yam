@@ -12,8 +12,9 @@ client remains unmodified and attributed in NOTICE.
 
 ## Run
 
-`./setup.sh` installs the semantic encoder. Launch `./run.sh`, select **MEMO**,
-and submit a task. The default semantic encoder is MiniLM-L6-v2 at the exact
+Follow the standalone installation in README.md, then launch
+`python -m agp_remote_yam --memo-site --memory-encoder semantic` and submit a task.
+The default semantic encoder is MiniLM-L6-v2 at the exact
 revision in dependency.lock.json. First use downloads public model weights.
 For explicit offline fixtures use `--demo --synthetic-cameras --memory-encoder lexical`;
 lexical hashing is labelled in every memory and is not semantic retrieval.
@@ -29,14 +30,15 @@ parameterized Python function with capture/code evidence. Templates are context
 for subsequent coding, never automatically executed. Silence and packet
 completion do not establish task success. All learned entries remain labelled
 agent-authored/unverified; provenance records the source run, mode, hashes and
-raw correction IDs. A mock lesson is not physical task evidence.
+raw correction IDs. A mock lesson is not physical task evidence. Context includes
+an owner-scoped action catalog so the coding agent can discover relevant learned
+labels before querying action-specific guidance; GENERAL alone can return none.
 
 SQLite stores the append-only records and source corrections in
 `data/skillbook.sqlite3`. Each run pins a retrieval revision. Consolidation adds
 a new revision and supersedes source entries without deleting them; old run
 snapshots remain reproducible. Standalone memory is private to its browser
-capability; the shared Playground uses a separate opaque HttpOnly cookie so
-memory survives visitor-session renewal without merging different browsers.
+capability. Its opaque HttpOnly cookie keeps different browsers separate.
 Clearing that cookie loses access to the corresponding private memory namespace.
 
 ## Offline consolidation
