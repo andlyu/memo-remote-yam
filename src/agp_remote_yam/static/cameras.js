@@ -32,6 +32,7 @@
     // independent views are labelled as such; model captures stay separate.
     let snapshots = true;
     function snapshot(tile, now) {
+      if(tile.role==="observer"&&config.robot_id==="robot-ba8413962083809c")return;
       if (tile.loading || now-tile.requestedAt < 400) return;
       tile.loading=true;tile.requestedAt=now;
       const image = new Image();
@@ -84,17 +85,18 @@
       snapshots=video.readyState<2 || (Number.isFinite(lag)&&lag>2);
       if(!document.hidden&&snapshots){
         for(const tile of tiles)snapshot(tile,now);
-        const current=tiles.every(tile=>now-tile.snapshotAt<3000&&tile.snapshotAt>0);
-        status=current?"Live camera snapshots · independent views":"Waiting for fresh public camera snapshots";
+        const current=tiles.every(tile=>tile.role==="observer"?frames>0:now-tile.snapshotAt<3000&&tile.snapshotAt>0);
+        status=current?"Live camera snapshots · observer video · independent views":"Connecting to public camera views";
         video.dataset.publisherLagSeconds=Number.isFinite(lag)?lag.toFixed(2):"unknown";
       }
-      if (!document.hidden && !snapshots && video.readyState >= 2 && video.currentTime !== lastTime && now - lastPaint >= 125) {
+      if (!document.hidden && video.readyState >= 2 && video.currentTime !== lastTime && now - lastPaint >= 125) {
         const width = video.videoWidth, height = video.videoHeight;
         if (atlas.width !== width) atlas.width = width;
         if (atlas.height !== height) atlas.height = height;
         context.drawImage(video, 0, 0, width, height);
         frames++;
         for (const tile of tiles) {
+          if(snapshots&&tile.role!=="observer")continue;
           const rect = crop(tile.role, width, height, stream.cameras);
           if (!rect) continue;
           draw(tile.canvas, atlas, rect);
@@ -102,7 +104,7 @@
           tile.canvas.dataset.presentedFrame = String(frames);
         }
         lastTime = video.currentTime; lastPaint = now; lastAdvance = performance.now();
-        status = "Live public cameras · main observer, overhead, left and right";
+        if(!snapshots)status = "Live public cameras · main observer, overhead, left and right";
         play.hidden = true;
       }
       if (performance.now() - lastAdvance > 20000) retry();
