@@ -254,8 +254,8 @@ Website: https://memo.54.209.185.15.sslip.io/ . Public source:
 https://github.com/andlyu/memo-remote-yam . Deployed source:
 fbd1e86817f78b010f9180ad1c033677883a80bc. HTTPS/config returned200; actual approach
 MEMO, native remote coding worker, semantic retrieval, physical_api mode,
-RoboHouse stationrobot-ba8413962083809c. Both MEMO services and the separate
-AgP service are active. Playground source/proxy routes were not replaced.
+RoboHouse stationrobot-ba8413962083809c. Both MEMO services are active. This deployment did not modify the AgP service
+or replace Playground source/proxy routes.
 Public-visibility exceptions: none.
 
 Reviewed every requirement: website/source/public visibility/method label are
