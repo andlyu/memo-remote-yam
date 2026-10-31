@@ -1,7 +1,7 @@
 # Standalone MEMO implementation
 
-Status: native-model mock verification passed; deployment and physical
-acceptance are pending. Do not interpret this report as completed acceptance.
+Status: native-model mock verification and separate public deployment passed;
+physical acceptance is blocked pending explicit action approval. Do not interpret this report as completed acceptance.
 
 Symptom: the previous combined site lacked a complete independently hosted MEMO
 learning/reuse/refinement flow and physical replay/identity acceptance evidence.
@@ -25,7 +25,7 @@ persistent progress to the existing interface.
 Regression evidence: the new tests initially failed on missing MEMO identity,
 method enforcement and offline-only consolidation. The pre-admission retrieval
 case failed against the base. The completed-metadata race failed before its fix.
-The final99-test adapter suite passed in21.67s. JavaScript syntax and whitespace
+The final100-test adapter suite passed in25.12s. JavaScript syntax and whitespace
 checks passed. Local mock UI verified explicit synthetic labelling, completed
 activity, history, disabled correction after completion and all four camera tiles.
 
@@ -50,3 +50,21 @@ The proof run IDs are7d73e69efad24996954b0b06979a4f86 and
 This was model=gpt-6-luna, semantic retrieval, mock-only execution with a10s
 admission delay. First measured mock completion was19.78s and19.50s; these do
 not establish a physical timing pass. No robot lease was acquired.
+
+Final UI regression: explicit automated verification keeps the confirmed human
+runner identity and records execution mode separately. Its API test failed before
+the metadata addition and passed after it. Added a compact shallow-desktop layout
+so Run fits alongside live cameras. Final sourcefbd1e86; physical check pending.
+
+Deployment: public source andlyu/memo-remote-yam, origin
+https://memo.54.209.185.15.sslip.io/, sourcefbd1e86. Own service, worker user,
+rootless storage, private broker/config and data. Canonical Host validation
+correctly refused the first localhost health probe; fixed the operator probe
+without weakening application checks. HTTPS200 verified and all four real
+cameras rendered. Public screenshot and sanitized deployment config retained.
+
+Final physical check: automatic approval review rejected the combined UI
+identity submission and bounded robot run for lack of specific trusted consent
+for the email disclosure/physical action. No run/session/command was created.
+Asked for exactly that approval and continued read-only checks. No alternative
+route was attempted. Physical/replay/latency checklist remains explicitly open.

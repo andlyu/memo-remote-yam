@@ -40,11 +40,11 @@ unverified, and request only the specific permission needed to unblock it.
 
 ## Completion requirements
 
-- [ ] A usable website exists, with an associated repository containing the
+- [x] A usable website exists, with an associated repository containing the
   website's source code. Record both links and the deployed source revision.
-- [ ] The website and its source repository are public, unless an explicit
+- [x] The website and its source repository are public, unless an explicit
   public-visibility exception for either is recorded below.
-- [ ] The website clearly names the actual approach/method being run. Use the
+- [x] The website clearly names the actual approach/method being run. Use the
   executed method's name; Spotter is an example, not a shared hardcoded label.
 - [ ] When a human joins, collect or confirm their name and email. Prefill known
   identity/default values where available and let the runner edit both fields
@@ -68,7 +68,7 @@ unverified, and request only the specific permission needed to unblock it.
 - [ ] The person can browse/select previous runs on the website and replay their
   retained physical arm footage, associated with the executed method and run.
   Mock animations do not satisfy either replay requirement.
-- [ ] If the integrated method executes anything in simulation, those executions
+- [x] If the integrated method executes anything in simulation, those executions
   are reviewable within the integration website and tied to the corresponding
   run. A reviewer can inspect what ran and its results using suitable
   replay/visualization and relevant outputs, as appropriate to the simulation.
@@ -230,7 +230,7 @@ Independent website: https://memo.54.209.185.15.sslip.io/ .
 Public base adapter revision:6e6c3cab5797c4dece5183feef2966b0385b7424.
 The AgP website and Playground are outside this deployment.
 
-Current software evidence:99 adapter tests passed in21.67s. Actual native-model
+Current software evidence:100 adapter tests passed in25.12s. Actual native-model
 verification passed on mock arms: learned two corrections as generalized guidance,
 saved a parameterized Python skill template, retrieved lessons on a later task,
 and consolidated related guidance offline with parent provenance. Model gpt-6-luna,
@@ -246,3 +246,48 @@ Exceptions: none claimed for physical task timing. Offline refinement has no
 physical session and is a separate job, not a physical Run. Its research basis
 is the MEMO project's overview describing offline skillbook clustering:
 https://collab.me.vt.edu/memo/ .
+
+
+## Deployed review — October30,2026 (03:03 UTC October31)
+
+Website: https://memo.54.209.185.15.sslip.io/ . Public source:
+https://github.com/andlyu/memo-remote-yam . Deployed source:
+fbd1e86817f78b010f9180ad1c033677883a80bc. HTTPS/config returned200; actual approach
+MEMO, native remote coding worker, semantic retrieval, physical_api mode,
+RoboHouse stationrobot-ba8413962083809c. Both MEMO services and the separate
+AgP service are active. Playground source/proxy routes were not replaced.
+Public-visibility exceptions: none.
+
+Reviewed every requirement: website/source/public visibility/method label are
+verified. Deployed live observer, overhead and wrist cameras show actual arms
+and advancing real views. The 1280x720 layout now shows Run;390px mock layout
+was also inspected. Editable name/email fields, browser defaults, distinct
+human identity/automated verification mode, run context, corrections, history,
+Stop and retained replay have adapter/mock coverage. The actual-model mock
+check verifies learned guidance, real Python templates, semantic reuse and
+source-preserving offline consolidation. These do not substitute for a deployed
+physical execution, human join, live method execution or physical replay check.
+
+Simulation review: not applicable to the deployed method; it executes no physics
+simulation. Offline validation uses explicitly labelled mock arms/cameras and
+retains model programs, events and measured mock results in its receipt. The
+public website runs physical_api mode. Offline refinement has no robot session.
+
+Physical test scope prepared: normal deployed UI, confirmed runner Andrew,
+separate automated_test execution mode,60s limit, one fresh-state-derived
++0.04rad change to left joint0, retain all other targets, live and retained
+camera footage. Existing queue, lease, validation and Stop remain enabled.
+Before execution, automatic approval review rejected the UI action, stating
+that trusted instructions did not specifically authorize the personal email
+disclosure to the deployed site and the physical robot action. No form was
+submitted, no MEMO run was created, and no robot command was sent. The specific
+identity/physical-motion/recording approval is pending. The rejected action was
+not retried through another route.
+
+Remaining unchecked: deployed human join/attribution verification; physical
+method execution; live method-driven arm movement; immediate and historical
+physical replay; both15s timing requirements; deployed launch/stall/recovery
+progress; final normal-UI physical run. No timing exception is claimed. There
+are no physical Run-click rows because the requested test was blocked before
+submission. Acknowledgement, mock motion and other integrations' movement are
+not counted as MEMO physical evidence.
