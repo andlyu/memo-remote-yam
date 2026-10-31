@@ -19,7 +19,7 @@ def test_memo_run_requires_identity_and_retains_method_context(tmp_path):
     assert status == 202
     run = wait_run(app, result['id'], cookie)
     assert run['approach'] == 'MEMO' and run['memo_enabled'] is True
-    assert run['runner'] == {'kind':'automated','name':'Automated','email':None}
+    assert run['runner'] == {'kind':'automated','name':'Automated'}
     assert run['replay']['status'] == 'not_physical'
     assert 'MEMO.md' in run['files']
     app.manager.close()
@@ -88,7 +88,9 @@ Path('FINAL.json').write_text(json.dumps({'status':'done','summary':'Offline fix
     rows=app.manager.skillbook.list(owner)
     assert len(rows)==1 and len(rows[0]['parents'])==2
     assert request(app, '/api/runs', cookie=cookie)[2]['runs']==[]
-    assert request(app, path+'/'+job['id'])[0]==403
+    public=request(app, path+'/'+job['id'])
+    assert public[0]==200 and public[2]['owned'] is False
+    assert 'owner' not in public[2] and 'email' not in public[2]['runner']
     app.manager.close()
 
 

@@ -110,6 +110,7 @@ class RunManager:
             self.store.update(directory, owner=owner, mode="offline_mock" if self.settings.offline else "physical_api",
                               duration_s=duration, approach="MEMO" if memo else APPROACH,
                               runner=runner, timing=timing, execution_mode=execution_mode,
+                              model="MEMO" if memo else APPROACH, foundation_model=self.settings.model,
                               robot_id=robot_id,
                               **(dict(memo_enabled=memo, memory_version=memory.version) if memory else {}))
             journal.add("run_requested", "MEMO run requested" if memo else "Agent as Policy run requested", approach="MEMO" if memo else APPROACH,
@@ -226,7 +227,8 @@ class RunManager:
                 finally:
                     recording.finish()
                 metadata = json.loads((directory / "run.json").read_text())
-                timing = metadata["timing"]
+                from .identity import with_home_evidence
+                timing = with_home_evidence(metadata["timing"], journal.after(), directory)
                 first = next((e for e in journal.after() if e["kind"] == "physical_motion_measured"), None)
                 if first:
                     timing = measured_timing(timing, first)
@@ -281,6 +283,13 @@ class RunManager:
             rows = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
             events = rows[max(0, cursor + 1):]
         value["events"] = events
+        if not value.get('job_kind') and value.get('timing'):
+            from .identity import with_home_evidence
+            all_events = context['journal'].after() if context else rows
+            value['timing'] = with_home_evidence(value['timing'], all_events, directory)
+            first_motion = next((e for e in all_events if e['kind'] == 'physical_motion_measured'), None)
+            if first_motion:
+                value['timing'] = measured_timing(value['timing'], first_motion)
         value["active"] = context is not None
         value["replay"] = replay_info(directory)
         if self.skillbook:

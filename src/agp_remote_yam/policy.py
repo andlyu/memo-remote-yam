@@ -35,7 +35,9 @@ class AgPPolicy:
         self._motion_recorded = False
 
     def public_config(self):
-        return dict(provider=self.provider_name, model=self.runtime.model,
+        return dict(provider=self.provider_name,
+                    model="MEMO" if self.runtime.memory is not None else self.runtime.model,
+                    foundation_model=self.runtime.model,
                     display_name="MEMO" if self.runtime.memory is not None else "Agent as Policy", runtime=self.runtime.state,
                     agent_declared_outcome=self.runtime.outcome)
 
@@ -99,6 +101,10 @@ class AgPPolicy:
             self._future.set_result(deepcopy(observation))
             self._future, self._completed = None, None
         if not self._started:
+            if self.physical and observation.get('homed') is True:
+                self.journal.add('home_completed', 'Startup Home completed with matched settled feedback',
+                                 observed_at=observation['observed_at'], physical=True,
+                                 evidence='Controller-confirmed Home; not method-driven motion')
             backend = self.backend_factory(self)
             self.runtime.start(backend, prompt)
             self._started = True

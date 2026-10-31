@@ -38,7 +38,9 @@ class App:
         video_stream = self.video_streams[robot_id]
         return dict(csrf=csrf, robot_id=robot_id,
             robots=[dict(id=k, name=v) for k,v in ROBOTS.items()],
-            model=self.settings.model, mode="offline_mock" if self.settings.offline else "physical_api",
+            model="MEMO" if self.settings.memo_site else self.settings.model,
+            foundation_model=self.settings.model if not self.settings.demo else None,
+            mode="offline_mock" if self.settings.offline else "physical_api",
             agent="scripted" if self.settings.demo else self.settings.agent_mode, remote_yam_revision=REMOTE_YAM_COMMIT,
             camera_source=self.settings.camera_source, camera_roles=list(CAMERA_ROLES), video_stream=video_stream,
             agp_reference_revision=UPSTREAM_AGP_COMMIT, approach="MEMO" if self.settings.memo_site else APPROACH,
@@ -165,6 +167,12 @@ class App:
                     return fetch_media(stream, path, query)
         if method == "GET" and path == "/api/config":
             return 200, "application/json", self.configuration(robot_id, csrf)
+        if method == "GET" and path == '/api/acceptance' and self.settings.memo_site:
+            value = json.loads(files('agp_remote_yam').joinpath('assets/acceptance.json').read_text())
+            passed = sum(row['passed'] for row in value['requirements'])
+            total = len(value['requirements'])
+            return 200, 'application/json', dict(value, passed=passed, total=total,
+                                                percentage=round(100*passed/total, 1))
         if method == "GET" and path == "/api/station":
             if self.settings.offline:
                 return 200, "application/json", dict(connected=False, mock=True, message="Mock robot · no physical control")
@@ -193,10 +201,12 @@ class App:
                 raise FileNotFoundError()
             with self.manager.lock:
                 active = set(self.manager.active)
+            from .public_review import review
             return 200, "application/json", dict(jobs=[
-                dict({k:v for k,v in row.items() if k != "owner"}, active=row["id"] in active)
+                review(dict(row, active=row["id"] in active), owned=row.get('owner') == owner,
+                       foundation_model=self.settings.model)
                 for row in self.manager.store.list()
-                if row.get("owner") == owner and row.get("job_kind") == "skillbook_refinement"])
+                if row.get('approach') == 'MEMO' and row.get("job_kind") == "skillbook_refinement"])
         if path == "/api/skillbook/jobs" and method == "POST":
             from .refinement import start_refinement
             value = json.loads(body)
@@ -206,8 +216,11 @@ class App:
                 raise FileNotFoundError()
             from .refinement import detail
             parts = path.split("/")
-            job = detail(self.manager, parts[4], owner)
             if len(parts) == 5 and method == "GET":
+                _, actual_owner = self.review_access(parts[4], owner)
+                from .public_review import review
+                job = review(detail(self.manager, parts[4], actual_owner), owned=actual_owner == owner,
+                             foundation_model=self.settings.model)
                 return 200, "application/json", job
             if len(parts) == 6 and parts[5] == "stop" and method == "POST":
                 self.manager.stop(parts[4], owner)
@@ -217,8 +230,13 @@ class App:
             with self.manager.lock:
                 active = set(self.manager.active)
             rows = [dict({k: v for k, v in row.items() if k != "owner"}, active=row["id"] in active)
-                    for row in self.manager.store.list() if row.get("owner") == owner and not row.get("job_kind") and
+                    for row in self.manager.store.list() if (row.get("owner") == owner or self.settings.memo_site) and not row.get("job_kind") and
                     (self.settings.memo_site or row.get("approach") == APPROACH and not row.get("memo_enabled"))]
+            if self.settings.memo_site:
+                from .public_review import is_demo, review
+                owners = {row['id']:row.get('owner') for row in self.manager.store.list()}
+                rows = [review(row, owned=owners[row['id']] == owner,
+                               foundation_model=self.settings.model) for row in rows if is_demo(row)]
             return 200, "application/json", dict(runs=rows)
         if path == "/api/memories" and method == "GET":
             if not self.settings.memo_site:
@@ -251,12 +269,17 @@ class App:
             identity = parts[3]
             if len(parts) == 4 and method == "GET":
                 cursor = int(query.get("after", ["-1"])[0])
-                return 200, "application/json", self.manager.detail(identity, owner, cursor)
+                directory, actual_owner = self.review_access(identity, owner)
+                value = self.manager.detail(identity, actual_owner, cursor)
+                if self.settings.memo_site:
+                    from .public_review import review
+                    value = review(value, owned=actual_owner == owner, foundation_model=self.settings.model)
+                return 200, "application/json", value
             if len(parts) == 5 and parts[4] == "stop" and method == "POST":
                 self.manager.stop(identity, owner)
                 return 200, "application/json", {"status": "stop_requested"}
             if len(parts) == 5 and parts[4] == "replay.mp4" and method == "GET":
-                directory = self.manager.owned(identity, owner)
+                directory, _ = self.review_access(identity, owner)
                 from .recording import replay_info
                 if (replay_info(directory) or {}).get("status") != "ready":
                     raise FileNotFoundError()
@@ -268,13 +291,34 @@ class App:
                 row = self.manager.correct(identity, owner, value.get("text"), value.get("request_id"))
                 return 202, "application/json", {"correction": {k:v for k,v in row.items() if k != "namespace"}}
             if len(parts) > 5 and parts[4] == "files" and method == "GET":
-                directory = self.manager.owned(identity, owner)
+                directory, actual_owner = self.review_access(identity, owner)
                 relative = unquote("/".join(parts[5:]))
+                if self.settings.memo_site and actual_owner != owner:
+                    from .public_review import readable_file
+                    if not readable_file(relative):
+                        raise FileNotFoundError()
                 if Path(relative).suffix not in (".png", ".jpg", ".py", ".md", ".json", ".npy", ".npz"):
                     raise FileNotFoundError()
                 data = Workspace(directory / "workspace").read(relative, 64_000_000)
                 mime = mimetypes.guess_type(relative)[0] or "application/octet-stream"
                 if Path(relative).suffix in (".py", ".md"):
                     mime = "text/plain; charset=utf-8"
+                if self.settings.memo_site and Path(relative).suffix in (".json", ".py", ".md"):
+                    from .public_review import redact
+                    data = (json.dumps(redact(json.loads(data))).encode() if Path(relative).suffix == '.json'
+                            else redact(data.decode()).encode())
                 return 200, mime, data
         raise FileNotFoundError()
+
+    def review_access(self, identity, owner):
+        try:
+            return self.manager.owned(identity, owner), owner
+        except PermissionError:
+            if not self.settings.memo_site:
+                raise
+            from .public_review import is_demo
+            directory = self.manager.store.directory(identity)
+            metadata = json.loads((directory / 'run.json').read_text())
+            if not is_demo(metadata):
+                raise PermissionError('This is not a public demonstration')
+            return directory, metadata['owner']

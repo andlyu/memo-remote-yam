@@ -1,0 +1,83 @@
+{
+  "harness_revision": "1619d7f25190ed00c37da6006b3f16c4580eb166",
+  "updated_at": "2026-10-31T05:28:00Z",
+  "requirements": [
+    {
+      "id": 1,
+      "passed": true,
+      "requirement": "A usable website exists, with an associated repository containing the website's source code. Record both links and the deployed source revision."
+    },
+    {
+      "id": 2,
+      "passed": false,
+      "requirement": "Everything in the playground demo is public by default, including the website, source repository, runs/results, live demos, recordings, replays/history, simulation outputs and supporting evidence. Any nonpublic exception reflects an explicit user instruction or visibility change, recorded below."
+    },
+    {
+      "id": 3,
+      "passed": false,
+      "requirement": "The website clearly names the actual approach/method being run. Use the executed method's name; Spotter is an example, not a shared hardcoded label. The **Model** field identifies the approach being tested, as specified below."
+    },
+    {
+      "id": 4,
+      "passed": true,
+      "requirement": "When a human joins, collect or confirm their name and email. Prefill known identity/default values where available and let the runner edit both fields before joining."
+    },
+    {
+      "id": 5,
+      "passed": true,
+      "requirement": "Run context includes the actual approach and confirmed runner identity; the website makes clear which method is running and whose run it is."
+    },
+    {
+      "id": 6,
+      "passed": true,
+      "requirement": "Policy/model tests initiated by a person retain that actual user's confirmed name as runner. Use available identity and editable name/email defaults; require the real name to be provided/confirmed if missing before testing or running. Do not substitute `Anonymous`, `Autonomous` or `Automated` for that person. Record execution mode (such as `automated test`) and actual approach separately from human identity. Genuinely unattended/system activity has an explicit system identity; never fabricate a person's name or email."
+    },
+    {
+      "id": 7,
+      "passed": true,
+      "requirement": "A person can use the website to run the integrated paper's method on physical YAM robots/arms. Record a verified physical execution of that method."
+    },
+    {
+      "id": 8,
+      "passed": true,
+      "requirement": "The actual physical arms are visible live on the website while the method runs, so a visitor can see that it is executing on real hardware."
+    },
+    {
+      "id": 9,
+      "passed": true,
+      "requirement": "Immediately after a run finishes, the person can replay that just-completed physical YAM execution through the website, with retained footage showing the actual arms executing the integrated method."
+    },
+    {
+      "id": 10,
+      "passed": true,
+      "requirement": "The person can browse/select previous runs on the website and replay their retained physical arm footage, associated with the executed method and run. Mock animations do not satisfy either replay requirement."
+    },
+    {
+      "id": 11,
+      "passed": true,
+      "requirement": "If the integrated method executes anything in simulation, those executions are reviewable within the integration website and tied to the corresponding run. A reviewer can inspect what ran and its results using suitable replay/visualization and relevant outputs, as appropriate to the simulation. Clearly label simulation content to distinguish it from physical-arm footage. If nothing executes in simulation, record an explicit not-applicable explanation instead of claiming simulation review."
+    },
+    {
+      "id": 12,
+      "passed": true,
+      "requirement": "The website is intuitive: a new visitor, without coaching, can find how to run the method. Record the visitor path and starting conditions; site entry has no separate 15-second pass/fail deadline."
+    },
+    {
+      "id": 13,
+      "passed": false,
+      "requirement": "**Mandatory for every run:** first observed actual method-driven physical YAM motion occurs both within **15 seconds after the startup move to Home completes** and within **30 seconds after the Run click**, using the boundaries below (including a documented readiness timestamp when Home is unnecessary). Homing/preparation motion does not count. Verify and record both full elapsed times for every run; a sampled demonstration is insufficient. Apply only the documented GPU-launch or research-grounded exceptions below."
+    },
+    {
+      "id": 14,
+      "passed": false,
+      "requirement": "Every meaningful wait after a website action is immediately explained in a persistent inline status/progress area at that action (below Run in the run panel for launches). Show the current stage, a plain-language reason and real stage completion, with honest failure/stall status and available recovery. Verify the detailed wait-stage behavior below."
+    },
+    {
+      "id": 15,
+      "passed": false,
+      "requirement": "Before marking the integration complete or reporting it done, open the deployed website and perform a final end-to-end physical YAM run through its normal user interface. Verify every completion requirement against that deployment and record evidence; unmet or unverified requirements block completion."
+    }
+  ],
+  "evidence": "https://github.com/andlyu/memo-remote-yam/blob/main/docs/COMPLETION-CHECKLIST.md",
+  "note": "Only checked requirements are counted; historical results retain their original evidence."
+}

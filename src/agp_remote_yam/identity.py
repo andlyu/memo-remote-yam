@@ -48,4 +48,35 @@ def measured_timing(timing, first):
     if "run_clicked_at" in result:
         result.update(run_to_motion_s=first["time"]-result["run_clicked_at"],
                       entry_to_motion_s=first["time"]-result["page_entered_at"])
+    home = result.get('home_completed_at')
+    if home is not None:
+        result['home_to_measured_completion_s'] = first['time'] - home
+        run_elapsed = result.get('run_to_motion_s')
+        result['measured_completion_within_limits'] = (
+            0 <= result['home_to_measured_completion_s'] <= 15 and
+            run_elapsed is not None and 0 <= run_elapsed <= 30)
+    return result
+
+
+def with_home_evidence(timing, events, directory):
+    """Use startup's matched sample, including retained historical controller logs."""
+    import json
+    result = dict(timing)
+    samples = [e.get('observed_at') for e in events if e.get('kind') == 'home_completed']
+    if not samples and 'home_completed_at' not in result:
+        for path in (directory / 'recording').glob('run_*/interactions.jsonl'):
+            with path.open() as source:
+                for line in source:
+                    event = json.loads(line)
+                    detail = event.get('details', {})
+                    sample = detail.get('completion', {})
+                    if (event.get('kind') == 'feedback_check' and detail.get('decision') == 'ready'
+                            and sample.get('step_id') == 0 and sample.get('homed') is True
+                            and sample.get('settled') is True):
+                        samples.append(sample.get('observed_at'))
+                        break
+    valid = [v for v in samples if type(v) in (int, float) and math.isfinite(v) and v > 0]
+    if valid:
+        result['home_completed_at'] = min(valid)
+        result['home_evidence'] = 'Matched settled startup Home feedback; corroborate with footage'
     return result

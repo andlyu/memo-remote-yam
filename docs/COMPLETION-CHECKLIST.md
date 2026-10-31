@@ -8,6 +8,23 @@ evidence. Report checklist status, evidence links, unmet items and explicit
 exceptions; leave unfinished requirements unchecked and do not describe the
 integration as complete.
 
+## Purpose and public visibility by default
+
+The playground exists for demos and for showing people how well approaches work.
+Everything in the playground demo is **public by default**: the website, source
+repository, approach/configuration descriptions, runs and results, live demos,
+recordings, replays/history, simulation outputs, and supporting demo evidence.
+
+Publish these demo materials so people can inspect the actual behavior and
+results. This is the standing visibility default; an additional routine
+confirmation is not required. Only an explicit user instruction or user visibility
+change overrides it, for the scope the user specifies. Respect that change and
+record the affected materials and instruction below. An existing private setting
+alone does not establish a user-requested exception.
+
+Keep credentials, access tokens and private contact details out of public demo
+materials.
+
 ## Standing authorization for physical playground tests
 
 ### Authorization granted by using this harness
@@ -102,10 +119,13 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
 
 - [x] A usable website exists, with an associated repository containing the
   website's source code. Record both links and the deployed source revision.
-- [x] The website and its source repository are public, unless an explicit
-  public-visibility exception for either is recorded below.
-- [x] The website clearly names the actual approach/method being run. Use the
+- [ ] Everything in the playground demo is public by default, including the
+  website, source repository, runs/results, live demos, recordings, replays/history,
+  simulation outputs and supporting evidence. Any nonpublic exception reflects
+  an explicit user instruction or visibility change, recorded below.
+- [ ] The website clearly names the actual approach/method being run. Use the
   executed method's name; Spotter is an example, not a shared hardcoded label.
+  The **Model** field identifies the approach being tested, as specified below.
 - [x] When a human joins, collect or confirm their name and email. Prefill known
   identity/default values where available and let the runner edit both fields
   before joining.
@@ -135,13 +155,16 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
   Clearly label simulation content to distinguish it from physical-arm footage.
   If nothing executes in simulation, record an explicit not-applicable
   explanation instead of claiming simulation review.
-- [ ] The website is intuitive: a new visitor, without coaching, can find how to
-  run the method and have the physical YAM arms actually executing it within
-  **15 seconds of entering the website**, verified as described below.
-- [ ] **Mandatory for every run:** after the person clicks Run, the physical YAM
-  arms start actual method-driven motion within **15 seconds**, unless that run
-  requires launching a GPU as documented below. Verify and record every run;
-  a sampled demonstration is insufficient.
+- [x] The website is intuitive: a new visitor, without coaching, can find how to
+  run the method. Record the visitor path and starting conditions; site entry
+  has no separate 15-second pass/fail deadline.
+- [ ] **Mandatory for every run:** first observed actual method-driven physical
+  YAM motion occurs both within **15 seconds after the startup move to Home
+  completes** and within **30 seconds after the Run click**, using the boundaries
+  below (including a documented readiness timestamp when Home is unnecessary).
+  Homing/preparation motion does not count. Verify and record both full elapsed
+  times for every run; a sampled demonstration is insufficient. Apply only the
+  documented GPU-launch or research-grounded exceptions below.
 - [ ] Every meaningful wait after a website action is immediately explained in
   a persistent inline status/progress area at that action (below Run in the run
   panel for launches). Show the current stage, a plain-language reason and real
@@ -153,61 +176,112 @@ and [Auto-review context and denials](https://learn.chatgpt.com/docs/sandboxing/
   deployment and record evidence; unmet or unverified requirements block
   completion.
 
-## Verify the 15-second path
+## Model identifies the tested approach
 
-Time a visitor's full path. Start at initial navigation to the website (`t0`);
-stop at the first observed physical arm motion executing the integrated method
-(`t1`). Require `t1 - t0 <= 15 seconds`. Include page loading, finding the controls,
-login/setup, queue/readiness waits and inference in the elapsed time; do not
-restart the clock at Run. Queued, submitted, accepted or a UI "running" status
-alone does not pass, nor does backend latency alone.
+Set the harness's **Model** field to the actual research approach/method being
+tested. For example, a HarnessVLA run uses `HarnessVLA` as its Model value.
+Resolve this value from the approach that actually executes and carry it
+consistently through the website's model label/selection, run context and stored
+run records, queue/email notifications, and replay/history attribution.
 
-Include join-time name/email entry or confirmation in this same measurement.
+Record underlying foundation, planner or VLA model IDs and checkpoint names as
+separate configuration metadata. Keep confirmed human runner identity and
+execution mode in their own fields too.
 
-Record the visitor's starting state and test conditions. Keep a timed screen
-recording showing site entry, the visitor's actions and the live arms beginning
-the method, linked to the matching physical run. If the elapsed time exceeds
-15 seconds or physical motion is unverified, leave the box unchecked.
+Verify a run's Model value against the executed approach and retain evidence of
+the website label, stored run record, notification and replay/history attribution.
 
-## Verify every Run click
+## Verify the visitor path
 
-This is an additional per-run measure; keep the site-entry test above. For every
-run, start at the Run click (`t_run`) and stop at the first observed actual
-method-driven physical arm motion (`t_motion`). Require
-`t_motion - t_run <= 15 seconds`, subject to the GPU-launch exception below.
-An acknowledgement, accepted request, queued status, submitted action or inference
-starting is insufficient.
+Record initial navigation (`t_entry`), the visitor's starting state and test
+conditions, including browser/session/network, identity entry or confirmation,
+queue and robot readiness. Keep the website usable without coaching. Site entry
+is contextual evidence, not a separate timed pass/fail gate.
 
-Record every run below (add rows), including visual evidence of the click and
-motion. Mark the outcome as pass, missed target, unverified or exception.
-Exceptions are not fulfilled <=15-second runs.
+Keep a timed screen recording showing the visitor's actions, the Run click,
+startup Home completion (or no-Home readiness) and live physical arms beginning
+the integrated method, linked to the matching run. Correlate recorded UI/physical
+events with lifecycle logs on a common timeline; document any clock offset or
+measurement uncertainty. Backend timing alone cannot verify physical onset.
 
-**GPU-launch exception:** a run that requires launching/provisioning a GPU (for
-example on RunPod) may exceed this Run-click target. Record why the GPU had to be
-launched and its startup evidence for that run. Keep the full elapsed time from
-Run click to observed physical motion; do not reset the clock when the GPU becomes
-ready. If GPU startup causes the target to be missed, label the outcome as an
-exception. If the GPU is already available, the normal 15-second requirement
-applies. This exception does not change the site-entry measure above.
+## Verify every Run and startup Home
+
+For every run, record these fixed boundaries:
+
+- `t_run`: the actual Run click, including any subsequent queue, preparation,
+  coding, model loading or inference time. Do not restart this clock at admission,
+  acknowledgement, dispatch, GPU readiness or a later status change.
+- `t_home`: completion of that run's startup move to Home, using matched
+  settled/ready completion for all participating arms, corroborated by live
+  footage. Starting/submitting Home or reporting it accepted is insufficient.
+  If no Home movement is necessary, record why and use the earliest documented
+  per-run robot-ready confirmation after Run and normal queue/lease admission,
+  before method preparation/execution. If already admitted and robot-ready at
+  Run, use `t_home = t_run` with that readiness evidence. Readiness here concerns
+  the robot, not GPU/model/code availability. Do not choose an arbitrary later
+  event, repeat Home, or delay the readiness timestamp to reset this clock.
+- `t_motion`: first observed actual physical arm motion executing the integrated
+  method. Home and other preparation/parking motion do not count. An accepted or
+  queued request, submitted packet, UI "running" status, inference start or
+  backend-only timestamp is insufficient.
+
+Ordinary runs must satisfy **both** `t_motion - t_home <= 15 seconds` and
+`t_motion - t_run <= 30 seconds`. Retain full Run-to-motion and post-Home-to-motion
+elapsed times even for failures and exceptions. Missing visual evidence or an
+unmatched Home/readiness boundary makes the timing unverified.
+
+Record every run below (add rows), with visual evidence of Run and physical
+onset plus matched Home/readiness evidence. Mark each timing outcome as pass,
+missed target, unverified or exception. A normal pass requires both full elapsed
+times within target; an exception is never a passed normal 30-second run.
+
+### GPU-launch exception
+
+A run genuinely requiring new GPU launch/provisioning (for example on RunPod)
+may claim an exception only for the evidenced time that launch blocks progress.
+Show the **entire launch period** in persistent inline UI: actual launch start,
+ongoing launch reason/stage and actual GPU-ready completion, with matching
+provider/instance/job lifecycle evidence. If launch starts before Run, retain its
+full start/ready interval and show its ongoing state when the run panel opens.
+Warm/already available GPUs do not qualify. Record why a new GPU was necessary.
+
+Keep the original clocks and full elapsed times. Record `t_gpu_start`,
+`t_gpu_ready`, the full launch duration, and the evidenced GPU-launch blocking
+seconds overlapping each measured interval (`B_run` and `B_home`). Only blocking
+time inside both the actual launch interval and the relevant Run/Home-to-motion
+interval can be excused; do not deduct concurrent time spent on unrelated work.
+For a GPU exception, require `t_motion - t_run - B_run <= 30 seconds` and
+`t_motion - t_home - B_home <= 15 seconds`, while labeling any full-time target
+miss caused by launch as **exception**, not normal pass. If GPU readiness
+precedes Home completion, `B_home = 0`: the full 15-second post-Home target still
+applies. If Home completes during launch, only its evidenced remaining launch
+blocking time can be excused; do not silently restart either clock at GPU ready.
+Missing lifecycle or persistent UI evidence leaves the exception unverified.
+
+Queueing, coding, model loading, inference, setup and other infrastructure delays
+outside actual GPU provisioning remain in their respective clocks. A warm GPU,
+a generic "loading" message or a slow model call is not a launch exception.
+Unrelated delays remain missed targets if they exceed the remaining limits.
 
 Other exceptions require a specific justification grounded in the integrated
-paper/research, explaining why it applies to that run, plus a supporting source
-citation/link and relevant section/page. Outside the explicit GPU-launch case,
-slow loading, queueing, setup or infrastructure delay is a missed target, not in
-itself a paper/research-grounded exemption.
+paper/research, explaining why it applies to that run and which target it affects,
+plus a supporting source citation/link and relevant section/page. Slow coding,
+loading, queueing, setup or infrastructure delay is not in itself a
+paper/research-grounded exemption; there is no permanent coding exemption.
 
-| Run reference | Run click (`t_run`) | First observed method-driven arm motion (`t_motion`) / visual evidence | Elapsed seconds | Outcome |
-| --- | --- | --- | --- | --- |
-| `86f7556492d143cb9c7d8bd2d563318b` (fbd1e86) | 1793421393.293 | Request at1793421418.526; measured completion1793421420.285; visual onset unverified | Request25.233; completion26.992 | Missed target; no exception |
-| `74d4fcd586b649c9a7c3eaf3a063b7e6` (ae8661b) | 1793422280.483 | Request1793422299.105; measured completion1793422300.339; visual onset unverified | Request18.622; completion19.856 | Missed target; no exception |
-| `01fc10c00cbe44308247e7b5849b1e4b` (0fa07ea) | 1793422981.128 | Request1793423009.270; measured completion1793423010.794; visual onset unverified | Request28.142; completion29.666 | Missed target; no exception |
+| Run reference | Run click (`t_run`) | Startup Home settled completion / no-Home readiness (`t_home`) and evidence | First observed method motion (`t_motion`) / visual evidence | Full Run-to-motion seconds | Full post-Home-to-motion seconds | Run / post-Home outcomes |
+| --- | --- | --- | --- | --- | --- | --- |
+| | | | | | | |
 
 - Exception record (repeat for each affected run):
 - Exception category (GPU launch or paper/research-grounded):
-- Affected run reference:
+- Affected run reference and timing target(s):
 - Specific reason and why it applies to this run:
 - GPU-launch evidence (if applicable: provider, instance/job reference,
-  launch/ready timestamps and startup log/link):
+  `t_gpu_start`, `t_gpu_ready`, full launch seconds, lifecycle log/link and
+  persistent inline UI evidence covering the entire launch period):
+- GPU-launch blocking overlap evidence (`B_run`, `B_home`, non-launch elapsed
+  times for both clocks and separate outcome for each target):
 - Supporting paper/research source (for other exceptions: citation/link and
   relevant section/page):
 
@@ -221,22 +295,32 @@ A transient toast alone or a generic spinner is insufficient.
 
 When a model requires a new GPU, show only the stages that actually exist:
 `Starting GPU` / "We're launching a GPU on RunPod for this model" -> `GPU ready`
--> `Loading model` -> `Running`. GPU startup must be explicit immediately after
-Run; visibly confirm actual GPU readiness before subsequent loading/running and
-retain completed-stage confirmation. Use the applicable provider/model wording.
+-> `Loading model` -> `Running`. GPU startup must be explicit from its actual
+launch start and throughout the launch period (immediately after Run when Run
+initiates it); visibly confirm actual GPU readiness before subsequent
+loading/running and retain completed-stage confirmation with start/ready
+timestamps tied to lifecycle evidence. Use the applicable provider/model wording.
 On failure or a stalled stage, state the known condition honestly and show an
 available recovery action, such as retry or cancel where supported. Do not invent
 percentages, ETA or completion, or expose irrelevant infrastructure internals.
-This transparency requirement adds no timing exemption or clock reset.
+UI transparency alone grants no exemption; only the documented GPU-launch
+blocking interval qualifies under the exception above, with neither clock reset.
 
 ## Final verification before completion
 
 Open the deployed website and its associated source repository. Use the normal
 visitor flow to join, run the integrated method on physical YAMs and watch the
-actual arms live. Check both 15-second measures, approach/runner identities,
+actual arms live. Check the 15-second post-Home and 30-second Run-to-motion
+measures with fixed boundaries, full elapsed times and any evidenced GPU-launch
+exception; site entry remains context only. Check approach/runner identities,
 replay of the just-completed run and selection/replay of previous runs. Review
 every checklist item against current evidence, including public visibility and
 actual user attribution in policy/model tests, with execution mode separate.
+Check the website, repository and each demo artifact type as a logged-out visitor;
+record working public links or the explicit user-directed visibility exception.
+Verify that Model identifies the executed approach consistently in the website,
+run records, notifications and replay/history, with underlying model/checkpoint
+configuration recorded separately.
 Verify wait status appears immediately, keeps a readable reason, and visibly
 confirms real stage completion (GPU ready before subsequent loading/running).
 Check failure/stall status and available recovery evidence too. Record the
@@ -252,6 +336,9 @@ before any completion claim.
 - Final checklist review (evidence for every item, replay links/timings, unmet
   items and explicit exceptions):
 - Actual approach name / website label evidence:
+- Model-as-approach evidence (executed approach, website Model value, stored run
+  record, queue/email notification and replay/history attribution; separate
+  underlying model/checkpoint configuration):
 - Human join evidence (name/email collection or confirmation, prefilled defaults
   and edits to both fields):
 - Run context evidence (run ID, approach and runner identity; website attribution):
@@ -266,8 +353,11 @@ before any completion claim.
 - Failure/stall status and available recovery evidence:
 - Website URL:
 - Website source repository URL / deployed revision:
-- Public-visibility exceptions (write "none", or the affected website/repository,
-  explicit exception, reason and approval reference):
+- Public-default evidence (logged-out access checks and links for website,
+  repository, runs/results, live demos, recordings, replay/history, simulation
+  outputs and supporting demo evidence; explain any artifact type not produced):
+- User-directed visibility exceptions (write "none", or affected materials/scope,
+  current visibility, explicit user instruction/change, date and reference):
 - Physical-test authorization/scope (source path/heading or commit URL, website
   and queue/run backend origins, station/arms, confirmed runner identity fields,
   method/task, duration, expected motion and recording/replay destination):
@@ -281,12 +371,33 @@ before any completion claim.
 - Simulation review (corresponding run reference, website review link, what ran
   and its results, suitable replay/visualization/outputs, clear simulation label;
   or explicit not-applicable explanation if nothing executes in simulation):
-- 15-second test (tester/date, browser/session/network and robot readiness):
-- Visitor's starting state and entry-to-motion steps:
-- `t0` / `t1` / total elapsed seconds:
-- Timed screen recording / matching physical run evidence:
+- Per-run timing verification (tester/date, browser/session/network and robot
+  readiness; evidence for every run in the timing table above):
+- Visitor's starting state, `t_entry` and entry-to-motion steps (context only):
+- `t_run` / `t_home` / `t_motion`, full Run-to-motion and post-Home-to-motion
+  seconds, and separate target outcomes:
+- Matched settled Home completion evidence for participating arms, or no-Home
+  reason and earliest robot-ready timestamp/evidence (already ready: Run time):
+- GPU launch start/ready/full interval and inline UI/lifecycle evidence, blocking
+  overlap per clock and exception outcome if applicable (otherwise "none"):
+- Timed screen recording / matching physical run evidence and clock correlation:
 - Remaining gaps:
 
+
+
+## Current contract and proportion — October30,2026
+
+Updated shared contract1619d7f25190ed00c37da6006b3f16c4580eb166 (PR171).
+The old site-entry/15s-after-Run gate below is historical. Current ordinary
+limits are15s after matched settled Home completion AND30s afterRun; site entry
+is contextual. All three retained hardware completion bounds fit these limits:
+12.319/8.193/9.929s postHome and26.992/19.856/29.666s afterRun. Exact visual onset
+correlation remains under review; no new timing pass is claimed from backend
+evidence alone. Score currently10/15 (66.7%), pending current-code public demo,
+Model attribution, wait/failure/recovery, visual timing and final checks. The
+previous11/15 (73.3%) counted the older contract and is preserved historically.
+
+## Historical MEMO evidence (older contract; preserved verbatim)
 
 ## MEMO implementation evidence — October30,2026
 

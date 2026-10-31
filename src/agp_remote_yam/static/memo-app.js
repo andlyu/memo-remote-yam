@@ -15,7 +15,7 @@ function displayStatus(run){return run.error?"Failed":terminal.has(run.status)&&
 function timingLabel(run){
  if(run.mode==="offline_mock")return "Mock robot · no physical execution";
  const timing=run.timing||{};
- if(timing.run_to_motion_s!=null)return "Measured movement completed "+timing.run_to_motion_s.toFixed(1)+" s after Run. Visual onset timing is unverified.";
+ if(timing.run_to_motion_s!=null)return "Measured completion: "+timing.run_to_motion_s.toFixed(1)+" s after Run"+(timing.home_to_measured_completion_s!=null?", "+timing.home_to_measured_completion_s.toFixed(1)+" s after Home":"")+". Targets: 30 s after Run and 15 s after Home. Visual onset timing is unverified.";
  if(terminal.has(run.status)&&!run.active)return "Ended with no verified method-driven movement.";
  const elapsed=Math.max(0,Date.now()/1000-(timing.run_clicked_at||run.created_at));
  return "Waiting for measured method-driven movement · "+Math.floor(elapsed)+" s since Run. Queue and agent work appear below.";
@@ -37,9 +37,9 @@ function renderFiles(names) {
   $("files").replaceChildren(fragment);
 }
 async function history() {
-  const result=await api("/api/runs"); activeRun=result.runs.find(x=>x.active||!terminal.has(x.status))?.id||null; const old=$("experience").value;
+  const result=await api("/api/runs"); activeRun=result.runs.find(x=>x.owned!==false&&(x.active||!terminal.has(x.status)))?.id||null; const old=$("experience").value;
   $("history").replaceChildren();$("experience").replaceChildren(new Option("Fresh start",""));
-  for (const run of result.runs) { const button=document.createElement("button");button.className="history-item";const title=document.createElement("strong"),meta=document.createElement("small");title.textContent=run.task;meta.textContent=(run.approach||"MEMO")+" · "+(run.runner?.name||"Legacy")+" · "+displayStatus(run)+" · "+new Date(run.created_at*1000).toLocaleString();button.append(title,meta);button.onclick=()=>{clearRun(run.id);poll();};$("history").append(button);if(terminal.has(run.status))$("experience").add(new Option(run.task.slice(0,35),run.id)); }
+  for (const run of result.runs) { const button=document.createElement("button");button.className="history-item";const title=document.createElement("strong"),meta=document.createElement("small");title.textContent=run.task;meta.textContent=(run.approach||"MEMO")+" · "+(run.runner?.name||"Legacy")+" · "+displayStatus(run)+" · "+new Date(run.created_at*1000).toLocaleString();button.append(title,meta);button.onclick=()=>{clearRun(run.id);poll();};$("history").append(button);if(run.owned!==false&&terminal.has(run.status))$("experience").add(new Option(run.task.slice(0,35),run.id)); }
   if ([...$("experience").options].some(x=>x.value===old))$("experience").value=old;
   return result.runs;
 }
@@ -51,7 +51,7 @@ async function poll() {
     $("phase").textContent=displayStatus(run);$("run-title").textContent=run.task;
     const finished=terminal.has(run.status)&&!run.active;
     const controlled=activeRun&&activeRun!==identity?await api("/api/runs/"+activeRun+"?after=99999999"):run;
-    if(controlled.active)activeRun=controlled.id;
+    if(controlled.active&&controlled.owned!==false)activeRun=controlled.id;
     else if(terminal.has(controlled.status)&&activeRun===controlled.id)activeRun=null;
 
     $("run-attribution").textContent=(run.approach||"MEMO")+" · "+(run.runner?.name||"Unattributed legacy run")+" · "+(run.robot_id||config.robot_id)+" · "+(run.execution_mode||"interactive").replaceAll("_"," ")+" · "+displayStatus(run);
@@ -74,10 +74,10 @@ $("task-form").addEventListener("submit",async event=>{
     const run=await api("/api/runs",{task:$("task").value,duration_s:Number($("duration").value),experience_run:$("experience").value||null,goal_image:goal,memo:true,robot_id:config.robot_id,runner:runner(),execution_mode:verification?"automated_test":automated?"unattended_test":"interactive",timing:{page_entered_at:performance.timeOrigin/1000,run_clicked_at:Date.now()/1000}});saveIdentity();activeRun=run.id;clearRun(run.id);$("stop").disabled=false;$("robot-select").disabled=true;await poll();history().catch(exc=>error(exc.message));
   }catch(exc){error(exc.message);$("run-progress").textContent="Task submission failed · correct the error below and try Run again.";$("run").disabled=!!activeRun||memoryJobActive;}
 });
-$("stop").onclick=async()=>{if(!activeRun)return;const target=activeRun;$("stop").disabled=true;try{await api("/api/runs/"+target+"/stop",{});await poll();}catch(exc){error(exc.message);}};
+$("stop").onclick=async()=>{if(!activeRun)return;const target=activeRun;$("stop").disabled=true;try{await api("/api/runs/"+target+"/stop",{});await poll();}catch(exc){error(exc.message);$("stop").disabled=!activeRun;$("run-progress").hidden=false;$("run-progress").textContent="Stop could not be confirmed · "+exc.message+". Use Stop again; watch the live arms.";}};
 $("refresh").onclick=()=>history().catch(exc=>error(exc.message));
 $("goal").onchange=()=>{const file=$("goal").files[0];$("goal-preview").hidden=!file;if(file)$("goal-preview").src=URL.createObjectURL(file);};
-async function init(){try{const requestedRobot=new URLSearchParams(location.search).get("robot_id");config=document.getElementById("initial-config")?JSON.parse(document.getElementById("initial-config").textContent):await api("/api/config"+(requestedRobot?"?robot_id="+encodeURIComponent(requestedRobot):""));$("robot-select").replaceChildren(...config.robots.map(x=>new Option(x.name,x.id)));$("robot-select").value=config.robot_id;$("mode").textContent=config.camera_source==="synthetic"?"Synthetic cameras":config.mode==="offline_mock"?"Live cameras · mock robot":"Live cameras · API robot";$("mode").classList.toggle("mock",config.mode==="offline_mock");$("robot").textContent=config.robot_id;$("model").textContent=config.agent==="scripted"?"Scripted agent · no model usage":config.model+" · MEMO";if(config.mode==="offline_mock")$("task").value="Demonstrate the offline agent → API controller loop.";stopCameras=AgPCameras.start(config);station();setInterval(station,10000);const runs=await history();const current=runs.find(x=>x.active||!terminal.has(x.status));activeRun=current?.id||null;const requestedRun=new URLSearchParams(location.search).get("run");if(current||requestedRun){clearRun(current?.id||requestedRun);await poll();}$("run").disabled=!!activeRun||memoryJobActive;memory().catch(exc=>error(exc.message));restoreMemoryJob().catch(exc=>error(exc.message));setInterval(()=>{poll();pollMemoryJob();},800);}catch(exc){error(exc.message);}}
+async function init(){try{api("/api/acceptance").then(v=>{$("verification-status").textContent="Verification: "+v.passed+"/"+v.total+" ("+v.percentage+"%)";}).catch(()=>{$("verification-status").textContent="Verification status unavailable";});const requestedRobot=new URLSearchParams(location.search).get("robot_id");config=document.getElementById("initial-config")?JSON.parse(document.getElementById("initial-config").textContent):await api("/api/config"+(requestedRobot?"?robot_id="+encodeURIComponent(requestedRobot):""));$("robot-select").replaceChildren(...config.robots.map(x=>new Option(x.name,x.id)));$("robot-select").value=config.robot_id;$("mode").textContent=config.camera_source==="synthetic"?"Synthetic cameras":config.mode==="offline_mock"?"Live cameras · mock robot":"Live cameras · API robot";$("mode").classList.toggle("mock",config.mode==="offline_mock");$("robot").textContent=config.robot_id;$("model").textContent=config.agent==="scripted"?"Scripted agent · no model usage":"Model: MEMO · "+(config.foundation_model||"scripted fixture");if(config.mode==="offline_mock")$("task").value="Demonstrate the offline agent → API controller loop.";stopCameras=AgPCameras.start(config);station();setInterval(station,10000);const runs=await history();const current=runs.find(x=>x.owned!==false&&(x.active||!terminal.has(x.status)));activeRun=current?.id||null;const requestedRun=new URLSearchParams(location.search).get("run");if(current||requestedRun){clearRun(current?.id||requestedRun);await poll();}$("run").disabled=!!activeRun||memoryJobActive;memory().catch(exc=>error(exc.message));restoreMemoryJob().catch(exc=>error(exc.message));setInterval(()=>{poll();pollMemoryJob();},800);}catch(exc){error(exc.message);}}
 $("robot-select").onchange=async()=>{
  try{config=await api("/api/config?robot_id="+encodeURIComponent($("robot-select").value));$("robot").textContent=config.robot_id;stopCameras?.();stopCameras=AgPCameras.start(config);station();}
  catch(exc){error(exc.message);}
@@ -144,14 +144,16 @@ async function pollMemoryJob(){
 }
 $("cancel-refinement").onclick=async()=>{try{if(memoryJob)await api("/api/skillbook/jobs/"+memoryJob+"/stop",{});}catch(exc){error(exc.message);}};
 
-async function restoreMemoryJob(){const data=await api("/api/skillbook/jobs");const active=data.jobs.find(job=>job.active);if(active){memoryJob=active.id;memoryJobActive=true;await pollMemoryJob();}}
+async function restoreMemoryJob(){const data=await api("/api/skillbook/jobs");const active=data.jobs.find(job=>job.owned!==false&&job.active);if(active){memoryJob=active.id;memoryJobActive=true;await pollMemoryJob();}}
 
 function renderProgress(run){
  const progress=$("run-progress");progress.hidden=false;
- if(!run.active&&terminal.has(run.status)){progress.textContent=run.error?"Run ended · "+run.error:run.outcome?.summary||"Run ended · review activity and retained evidence.";return;}
+ if(!run.active&&terminal.has(run.status)){progress.textContent=run.error?"Run ended · "+run.error+". Review the error; start a new Run when ready. Movement will not be replayed.":run.outcome?.summary||"Run ended · review activity and retained evidence.";return;}
+ const home=run.timing?.home_completed_at;
+ const elapsed=home?Date.now()/1000-home:null;
  const admitted=rows.some(e=>e.kind==="lifecycle"&&e.message==="Robot session running");
  const ready=rows.some(e=>e.kind==="worker_profile"&&e.profile?.stage==="thread_ready");
  const images=rows.some(e=>e.kind==="leased_images_reviewed");
  const motion=rows.some(e=>e.kind==="physical_motion_measured");
- progress.textContent=motion?"Measured movement confirmed · the agent is checking observations and finishing the task.":images?"Queue complete · scene received · the coding agent is choosing and executing its next step.":admitted?"Queue complete · "+(ready?"coding agent ready · supplying the settled camera views.":"preparing the coding agent before motion can begin."):"Waiting for robot admission · the coding environment prepares while the queue and robot readiness checks finish.";
+ progress.textContent=(home?"Home complete · ":"")+(elapsed>15&&!motion?"More than 15 s since Home; motion is not yet confirmed. Stop is available. ":"")+(motion?"Measured movement confirmed · the agent is checking observations and finishing the task.":images?"Queue complete · scene received · the coding agent is choosing and executing its next step.":admitted?"Queue complete · "+(ready?"coding agent ready · supplying the settled camera views.":"preparing the coding agent before motion can begin."):"Waiting for robot admission · the coding environment prepares while the queue and robot readiness checks finish.");
 }
